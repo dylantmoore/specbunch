@@ -18,6 +18,6 @@ counts are honored without a core-count cap. `threads_used` records an observed
 entry team; some stages remain serial. Builds without OpenMP report one.
 
 macOS and Windows link a patched private static LLVM OpenMP 21.1.8 runtime with
-hidden symbols. Linux uses static libgomp plus static C++ support libraries.
+hidden symbols. Linux uses dynamic OpenMP and C++ support libraries; auditwheel bundles libgomp in Linux wheels. Standalone libraries and Stata plugins require the system libgomp.so.1 runtime with GCC.
 No package sets `KMP_DUPLICATE_LIB_OK`. R follows its own OpenMP configuration;
 its no-runtime fallback requires compiler support for OpenMP SIMD semantics.

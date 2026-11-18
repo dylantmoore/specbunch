@@ -20,7 +20,7 @@ rows = []
 for root in (src/"core", src/"common", src/"highs"):
     if root.exists():
         for f in sorted(root.rglob("*")):
-            if f.is_file(): rows.append(hashlib.sha256(f.read_bytes()).hexdigest()+"  "+str(f.relative_to(p)))
+            if f.is_file(): rows.append(hashlib.sha256(f.read_bytes()).hexdigest()+"  "+f.relative_to(p).as_posix())
 (p/"VENDOR.md").write_text("# Byte-copy source SHA-256 manifest\n\nCore/common from sibling directories; HiGHS 1.8.0 from the pinned release.\n\n```\n"+"\n".join(rows)+"\n```\n")
 
 shutil.copy2(p/"VENDOR.md", p/"inst"/"VENDOR.md")

@@ -52,6 +52,9 @@ LLVM exceptions license is installed in each wheel as
 
 ## Linux
 
-Linux builds use GCC's static libgomp, pthreads, static libgcc/libstdc++, and a
+Linux builds use the system dynamic OpenMP and C++ runtimes, and a
 version script hiding non-ABI symbols. GCC runtime exception terms apply.
 Runtime updates must repeat package coexistence and thread-invariance tests.
+
+Linux wheels use auditwheel to bundle libgomp with a private library filename.
+Standalone Linux libraries/plugins require the system OpenMP runtime (libgomp.so.1 with GCC).

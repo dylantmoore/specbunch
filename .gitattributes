@@ -1,0 +1,2 @@
+# Keep byte-hashed sources and patch files identical on every checkout.
+* text=auto eol=lf

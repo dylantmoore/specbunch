@@ -2,7 +2,7 @@
 #   cmake -S bunch/core -B ${BUILD_DIR}/bunch -DCMAKE_BUILD_TYPE=Release
 #   cmake --build ${BUILD_DIR}/bunch -j
 # Options: -DSB_OPENMP=OFF (single-thread build: pragmas ignored, -fopenmp-simd keeps `omp simd` semantics),
-#          -DSB_OMP_STATIC=OFF (link the OpenMP runtime dynamically; default links it statically into the library),
+#          -DSB_OMP_STATIC=OFF (link the OpenMP runtime dynamically; default on Linux; macOS/Windows default to the private static runtime),
 #          -DSBC_PRIVATE_OPENMP=ON (default on macOS/Windows; pinned private LLVM runtime),
 #          -DSB_LIBOMP_ROOT=<prefix> (LLVM libomp prefix; set explicitly for non-private macOS builds).
 cmake_minimum_required(VERSION 3.20)
@@ -10,7 +10,14 @@ include("${CMAKE_CURRENT_LIST_DIR}/../../common/macos_deployment.cmake")
 project(specbunch VERSION 0.1.0 LANGUAGES C CXX)
 
 option(SB_OPENMP "Build with OpenMP" ON)
-option(SB_OMP_STATIC "Link the OpenMP runtime statically into libspecbunch" ON)
+# Distribution libgomp.a uses non-PIC TLS relocations and cannot enter a shared library.
+# Linux wheels bundle the dynamic runtime through auditwheel.
+if(UNIX AND NOT APPLE)
+  set(_omp_static_default OFF)
+else()
+  set(_omp_static_default ON)
+endif()
+option(SB_OMP_STATIC "Link the OpenMP runtime statically into libspecbunch" ${_omp_static_default})
 set(SB_LIBOMP_ROOT "$ENV{SB_LIBOMP_ROOT}" CACHE PATH "LLVM libomp prefix (macOS)")
 
 if(CMAKE_SOURCE_DIR MATCHES "CloudStorage" AND CMAKE_BINARY_DIR MATCHES "CloudStorage")

@@ -12,7 +12,7 @@ set(_sbc_omp_module "${CMAKE_CURRENT_LIST_DIR}")
 
 function(sbc_link_private_openmp target)
   if(NOT APPLE AND NOT WIN32)
-    message(FATAL_ERROR "Private LLVM runtime is supported here only on macOS/Windows; Linux uses static libgomp")
+    message(FATAL_ERROR "Private LLVM runtime is supported here only on macOS/Windows; Linux uses the system OpenMP runtime")
   endif()
   include(ExternalProject)
   find_package(Git REQUIRED)

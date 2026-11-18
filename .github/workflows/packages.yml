@@ -115,13 +115,15 @@ jobs:
             R CMD build "$GITHUB_WORKSPACE/$family/r"
           done
           for tar in *.tar.gz; do
-            R CMD check --as-cran "$tar"
+            R CMD check --as-cran --no-manual "$tar" || { cat ./*.Rcheck/00install.out; exit 1; }
           done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: r-check-${{ matrix.os }}
-          path: ${{ runner.temp }}/r-check/*.Rcheck/00check.log
+          path: |
+            ${{ runner.temp }}/r-check/*.Rcheck/00check.log
+            ${{ runner.temp }}/r-check/*.Rcheck/00install.out
           retention-days: 7
   julia:
     needs: plan

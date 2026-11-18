@@ -13,7 +13,7 @@ if(APPLE)
 elseif(UNIX)
  target_compile_definitions(specbunch PRIVATE SYSTEM=OPUNIX)
  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/plugin.map" "{ global: pginit; stata_call; local: *; };\n")
- set_property(TARGET specbunch PROPERTY LINK_OPTIONS "LINKER:--version-script=${CMAKE_CURRENT_BINARY_DIR}/plugin.map" "LINKER:--gc-sections" -static-libgcc -static-libstdc++)
+ set_property(TARGET specbunch PROPERTY LINK_OPTIONS "LINKER:--version-script=${CMAKE_CURRENT_BINARY_DIR}/plugin.map" "LINKER:--gc-sections")
 endif()
 # entry.c explicitly exports the SPI entry points despite core hidden defaults.
 add_custom_target(stata_plugin DEPENDS specbunch)

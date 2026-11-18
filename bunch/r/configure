@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
-CXX=$("${R_HOME}/bin/R" CMD config CXX20)
-CXXSTD=$("${R_HOME}/bin/R" CMD config CXX20STD)
+CXX=$("${R_HOME}/bin/R" CMD config CXX20 | tr -d '\r')
+CXXSTD=$("${R_HOME}/bin/R" CMD config CXX20STD | tr -d '\r')
 printf '%s\n' 'int main() { return 0; }' > conftest.cpp
 fpflags=
 if $CXX $CXXSTD -ffp-contract=off -c conftest.cpp -o conftest.o >/dev/null 2>&1; then
@@ -11,7 +11,7 @@ else
 fi
 rm -f conftest.cpp conftest.o
 # R provides the OpenMP flags; never locate or link a private runtime.
-omp=$(sed -n 's/^SHLIB_OPENMP_CXXFLAGS *= *//p' "${R_HOME}/etc${R_ARCH}/Makeconf")
+omp=$(sed -n 's/^SHLIB_OPENMP_CXXFLAGS *= *//p' "${R_HOME}/etc${R_ARCH}/Makeconf" | tr -d '\r')
 noomp=
 if test -z "$omp"; then
   noomp=-Icommon/shim/noomp
