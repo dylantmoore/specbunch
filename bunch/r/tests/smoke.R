@@ -5,13 +5,14 @@ set.seed(42)
 n <- 256L
 z <- ifelse(runif(n) < .2, 0, rnorm(n)) + .04*rnorm(n)
 x <- 2 + .2*rnorm(n)
-for(method in c("gaussian","voigt","gaussian_jump")) {
-  a <- mass(z,method=method,threads=1)
-  b <- mass(c(z,NA_real_,Inf),method=method,threads=2)
+for(combo in list(c("cosine","gaussian"),c("cosine","voigt"),c("joint","gaussian"),c("joint","voigt"))) {
+  method <- combo[1]; friction <- combo[2]
+  a <- mass(z,method=method,friction=friction,threads=1)
+  b <- mass(c(z,NA_real_,Inf),method=method,friction=friction,threads=2)
   a$raw$n_input <- b$raw$n_input
 stopifnot(a$threads_used == 1, b$threads_used %in% used(c(2,8)))
 a$raw$threads_used <- b$raw$threads_used
-  stopifnot(identical(a$raw,b$raw),is.data.frame(a$windows),inherits(a,"specbunch_result"),identical(a$se,a$raw$se_log_B))
+  stopifnot(identical(a$raw,b$raw),is.data.frame(a$windows),is.data.frame(a$transform),"cosine" %in% names(a$transform),inherits(a,"specbunch_result"),identical(a$se,a$raw$se_log_B))
   print(a); stopifnot(is.list(summary(a)))
 }
 a <- buncher_mean(z,x,threads=1,draws=19)
@@ -21,7 +22,7 @@ stopifnot(a$threads_used == 1, b$threads_used %in% used(c(2,8)))
 a$raw$threads_used <- b$raw$threads_used
 stopifnot(identical(a$raw,b$raw),is.list(version()))
 errors <- list(quote(mass(z,seed=-1)),quote(mass(z,weights=1)),
-               quote(mass(z,method="gaussian_jump",weights=rep(1,n))),quote(buncher_mean(z,x[-1])))
+               quote(mass(z,method="joint",weights=rep(1,n))),quote(buncher_mean(z,x[-1])))
 for(e in errors) stopifnot(inherits(try(eval(e),silent=TRUE),"try-error"))
 stopifnot(identical(mass(z+1,kink=1)$raw$n,as.double(n)))
 

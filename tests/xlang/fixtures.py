@@ -76,7 +76,7 @@ def public(case, arrays, threads=1):
         return specbunch.npmle(fit,arrays["z"],weights=weights,**opts)
     if entry == "bmean":
         return specbunch.buncher_mean(arrays["z"], arrays["x"], weights=weights, **opts)
-    return specbunch.mass(arrays["z"], weights=weights, method=entry[5:], **opts)
+    return specbunch.mass(arrays["z"], weights=weights, method="joint" if entry in ("mass_gaussian_jump","mass_joint_voigt") else "cosine", friction="voigt" if entry in ("mass_voigt","mass_joint_voigt") else "gaussian", **opts)
 
 
 def read_json(path):

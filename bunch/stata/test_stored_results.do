@@ -40,17 +40,25 @@ quietly generate double z=cond(runiform()<.2,0,rnormal())+.04*rnormal()
 quietly generate double x=2+.2*z+.1*rnormal()
 quietly generate double d=z>0
 quietly generate double wt=1+mod(_n,3)
-foreach entry in ll llv cfj {
-    quietly specbunch mass z, method(`entry') threads(1) seed(1)
-    quietly specbunch mass z, method(`entry') threads(1) seed(1)
+foreach entry in gaussian voigt joint {
+    local method cosine
+    local friction `entry'
+    if "`entry'"=="joint" {
+        local method joint
+        local friction gaussian
+    }
+    quietly specbunch mass z, method(`method') friction(`friction') threads(1) seed(1)
+    quietly specbunch mass z, method(`method') friction(`friction') threads(1) seed(1)
     mata: snapshot(st_local("output"),st_local("entry"))
 }
-quietly specbunch mass z, candidates(0) c2(0) threads(1) seed(1)
-quietly specbunch mass z, candidates(0) c2(0) threads(1) seed(1)
+quietly specbunch mass z, threads(1) seed(1)
+quietly specbunch mass z, threads(1) seed(1)
 mata: snapshot(st_local("output"),"no_candidates")
-foreach entry in ll llv {
-    quietly specbunch mass z [pw=wt], method(`entry') threads(1) seed(1)
-    quietly specbunch mass z [pw=wt], method(`entry') threads(1) seed(1)
+foreach entry in gaussian voigt {
+    local method cosine
+    local friction `entry'
+    quietly specbunch mass z [pw=wt], method(`method') friction(`friction') threads(1) seed(1)
+    quietly specbunch mass z [pw=wt], method(`method') friction(`friction') threads(1) seed(1)
     mata: snapshot(st_local("output"),"weighted_"+st_local("entry"))
 }
 quietly specbunch buncher z x, threads(1)

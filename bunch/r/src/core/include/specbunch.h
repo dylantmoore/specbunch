@@ -47,6 +47,13 @@ SB_API int sb_default_threads(void);
 SB_API const char* sb_last_error(void);
 SB_API void sb_opts_mass_init(sb_opts_mass*);
 SB_API void sb_opts_bmean_init(sb_opts_bmean*);
+#define SB_METHOD_COSINE 0
+#define SB_METHOD_JOINT 1
+#define SB_FRICTION_GAUSSIAN 0
+#define SB_FRICTION_VOIGT 1
+/* Additive ABI: option layouts and prior entry points remain compatible. */
+SB_API int sb_mass(const sb_data*,const sb_opts_mass*,int32_t method,int32_t friction,sb_result**);
+SB_API int sb_mass_joint_voigt(const sb_data*,const sb_opts_mass*,sb_result**);
 SB_API int sb_mass_gaussian(const sb_data*,const sb_opts_mass*,sb_result**);
 SB_API int sb_mass_voigt(const sb_data*,const sb_opts_mass*,sb_result**);
 SB_API int sb_mass_gaussian_jump(const sb_data*,const sb_opts_mass*,sb_result**);

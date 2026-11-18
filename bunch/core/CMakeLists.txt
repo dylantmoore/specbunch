@@ -87,7 +87,7 @@ ExternalProject_Add(highs_ext
   DOWNLOAD_EXTRACT_TIMESTAMP ON)
 set(HIGHS_INC ${HIGHS_PREFIX}/src/highs_ext/src ${HIGHS_PREFIX}/src/highs_ext-build)
 
-add_library(specbunch SHARED src/abi_common.cpp src/abi_mass_gaussian.cpp src/abi_mass_gaussian_jump.cpp src/abi_bmean.cpp src/npmle.cpp vendor/c2/kernel_puf.cpp vendor/c2/probit.cpp)
+add_library(specbunch SHARED src/abi_common.cpp src/abi_mass_gaussian.cpp src/abi_mass_gaussian_jump.cpp src/abi_mass_joint_voigt.cpp src/abi_bmean.cpp src/npmle.cpp vendor/c2/kernel_puf.cpp vendor/c2/probit.cpp)
 add_dependencies(specbunch highs_ext)
 target_include_directories(specbunch BEFORE PRIVATE ${COMMON_DIR}/shim/portable)
 target_include_directories(specbunch PRIVATE ${HIGHS_INC})
@@ -164,3 +164,9 @@ configure_file(${CMAKE_CURRENT_BINARY_DIR}/gen/sb_build_config.h.in ${CMAKE_CURR
 target_include_directories(specbunch PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/gen)
 target_compile_definitions(specbunch PRIVATE SB_HAVE_BUILD_CONFIG)
 message(STATUS "specbunch: flags='${SB_FLAGS_STR}' openmp=${SB_OMP_DESC}")
+
+# Optional development test; standalone language distributions omit repository tests.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/test_joint_voigt.cpp")
+  add_executable(sb_test_joint_voigt EXCLUDE_FROM_ALL "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/test_joint_voigt.cpp")
+  target_compile_options(sb_test_joint_voigt PRIVATE ${SB_FLAGS})
+endif()

@@ -1,3 +1,4 @@
+#include "transform_output.hpp"
 #include "public_result.hpp"
 
 
@@ -121,7 +122,7 @@ int mass_gaussian_jump_impl(const sb_data* data, const sb_opts_mass* opts_in, sb
   *out = nullptr;
   sb_opts_mass o;
   if (int rc = sbrun::read_opts(opts_in, o)) return rc;
-  if (data->w) return sbc::fail(SBC_E_INPUT, "gaussian_jump does not support weights");
+  if (data->w) return sbc::fail(SBC_E_INPUT, "joint does not support weights");
   if (data->n == 0) return sbpublic::insufficient(out,0,"gaussian_jump",o.threads);
   if (!data->z) return sbc::fail(SBC_E_INPUT, "sample pointer is NULL");
   vector<double> dZ; dZ.reserve(data->n);
@@ -166,6 +167,7 @@ int mass_gaussian_jump_impl(const sb_data* data, const sb_opts_mass* opts_in, sb
   if (o.distribution_checks) R->setv("distribution_summaries", sums);
   sbpublic::add_simple(data,o,*R);
   sbpublic::finish(*R,"gaussian_jump");
+  sbtransform::add(*data,o.threads,*R);
   R->finish_names();
   *out = reinterpret_cast<sb_result*>(guard.release());
   return SBC_OK;

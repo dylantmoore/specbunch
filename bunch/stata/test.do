@@ -40,7 +40,7 @@ specbunch mass shifted, kink(-8) threads(1)
 assert "`e(scalar_bits)'"=="`bits'"
 assert "`e(policy)'"=="tiered"
 assert colsof(e(windows)) > 10
-capture specbunch mass z [pw=wt], method(gaussian_jump) threads(1)
+capture specbunch mass z [pw=wt], method(joint) friction(gaussian) threads(1)
 assert _rc==498
 specbunch mass z in 1/10, threads(1)
 assert "`e(str_reason)'"=="insufficient_data"
@@ -63,8 +63,17 @@ set obs 1500
 set seed 37
 generate double z=cond(runiform()<.2,0,rnormal())+.04*rnormal()
 generate double weights=1+mod(_n,3)*.25
+specbunch mass z, method(joint) friction(voigt) threads(1)
+assert e(core_status)==0
+assert "`e(method)'"=="joint" & "`e(friction)'"=="voigt"
+assert rowsof(e(transform))==401 & colsof(e(transform))==8
+assert e(a)>=0 & e(s2)>=0 & e(sigma_eq)>0
 specbunch mass z [pw=weights], threads(1)
 assert e(core_status)==0
+assert rowsof(e(transform))==401
+assert colsof(e(transform))==5
+assert colnumb(e(transform),"cosine_fit")<.
+assert e(n_points)>=11
 specbunch npmle, threads(1) gridpoints(101) lambdapoints(5) refinepoints(3)
 assert "`e(npmle_status)'"=="converged"
 assert e(npmle_kkt)<.0000001

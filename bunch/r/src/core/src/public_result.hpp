@@ -16,8 +16,8 @@ inline void finish(sbc::Result &r,const std::string &method) {
   for(auto kv:std::map<std::string,std::string>{{"se_logB","se_log_B"},{"se_logS","se_log_sigma"},{"se_log_sigma_eq","se_log_sigma_eq"},{"p","fit_p"},{"aJ","jump"},{"pw_median","pointwise_median"},{"sigma_hat","sigma_pilot"}})
     if(old.count(kv.first))out[kv.second]=old[kv.first];
   if(!mean)for(auto type:{"ols","lad"}) {
-    std::string prefix=std::string(type)=="ols"?"simple_ols.":"simple_lad.";
-    for(auto k:{"B","sigma","status","m","ndrop"}) if(old.count(prefix+k))out[std::string("simple_")+type+"."+k]=old[prefix+k];
+    std::string prefix=std::string(type)=="ols"?"loglinear_ols.":"loglinear_lad.";
+    for(auto k:{"B","sigma","status","m","ndrop"}) if(old.count(prefix+k))out[std::string("loglinear_")+type+"."+k]=old[prefix+k];
   }
   const char* flags[]={"cdf_inconsistent","moments_inconsistent","no_valid_distribution","distribution_check_inconclusive","residual_cdf_inconsistent","poor_fit"};
   int bits=std::isfinite(get("flags"))?(int)get("flags"):0;std::string flagtext;
@@ -32,20 +32,23 @@ inline void finish(sbc::Result &r,const std::string &method) {
   }
   out["status"]=r.status;
   std::string policy=get("policy_mode")==2?"first":"tiered";
-  r.strings={{"method",method},{"policy",policy},{"reason",reason},{"flags_str",flagtext},
+  r.strings={{"method",mean?method:((method=="gaussian_jump" || method=="joint_voigt")?"joint":"cosine")},{"friction",mean?"":((method=="voigt" || method=="joint_voigt")?"voigt":"gaussian")},{"estimator",mean?"cosine-ratio fit":((method=="gaussian_jump" || method=="joint_voigt")?"Weighted nonlinear least squares of the empirical cosine and sine transforms in levels, with fixed inverse-covariance weights from their empirical covariance, solved by Gauss-Newton/Newton.":"Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform variance, solved by Gauss-Newton/Newton.")},{"policy",policy},{"reason",reason},{"flags_str",flagtext},
     {"check_outcomes","1=pass,0=fail,-1=not_evaluated"},
     {"se_note",mean?"Model-based standard error of the cosine ratio fit.":"Model-based standard errors on the log parameter scale."}};
   r.vectors.clear();for(auto &kv:vec)if(kv.first.rfind("windows.",0)==0)r.vectors[kv.first]=kv.second;
   if(!mean) {
+    out["n_points"]=nan;
+    for(auto k:{"t","t_scaled","cosine","cosine_se","cosine_fit"})r.setv(std::string("transform.")+k,{});
+    if((method=="gaussian_jump" || method=="joint_voigt"))for(auto k:{"sine_scaled","sine_scaled_se","sine_fit"})r.setv(std::string("transform.")+k,{});
     double pilot=get("sigma_pilot");
     for(auto end:{"lo","hi"}) {auto v=r.vectors[std::string("windows.window_")+end+"_scaled"];for(double &x:v)x/=pilot;r.vectors[std::string("windows.window_")+end]=v;out[std::string("window_")+end]=get(std::string("u_")+end)/pilot;out[std::string("window_")+end+"_scaled"]=get(std::string("u_")+end);}
-    if(method=="voigt") {
+    if((method=="voigt" || method=="joint_voigt")) {
       r.vectors["windows.a"]=vec["cand_a_voigt"];r.vectors["windows.s2"]=vec["cand_s2_voigt"];
       r.vectors["windows.sigma_eq"]=r.vectors["windows.sigma"];
       auto v=vec["cand_s2_voigt"];for(auto &x:v)x=std::sqrt(x);r.vectors["windows.sigma"]=v;
       out["a"]=get("a_voigt");out["s2"]=get("s2_voigt");out.erase("a_voigt");out.erase("s2_voigt");
     }
-    if(method=="gaussian_jump")r.vectors["windows.jump"]=vec["cand_aJ"];
+    if((method=="gaussian_jump" || method=="joint_voigt"))r.vectors["windows.jump"]=vec["cand_aJ"];
   }
   r.scalars=std::move(out);
 }
@@ -54,7 +57,7 @@ inline void add_simple(const sb_data* data,const sb_opts_mass &opts,sbc::Result 
   int rc=sb_mass_gaussian(data,&o,&h);
   if(rc)throw std::runtime_error("simple estimator calculation failed");
   auto *p=reinterpret_cast<sbc::Result*>(h);
-  for(auto &kv:p->scalars)if(kv.first.rfind("simple_",0)==0)r.scalars[kv.first]=kv.second;
+  for(auto &kv:p->scalars)if(kv.first.rfind("loglinear_",0)==0)r.scalars[kv.first]=kv.second;
   sb_result_free(h);
 }
 inline int insufficient(sb_result** out,size_t n,const std::string &method,int threads=0) {

@@ -61,7 +61,7 @@ function public_call(case,a,threads)
     end
     case.entry == "rd" && return SpecRD.rd(a["w"],a["d"],a["y"];weights,opts...)
     case.entry == "bmean" && return SpecBunch.buncher_mean(a["z"],a["x"];weights,opts...)
-    SpecBunch.mass(a["z"];weights,method=Symbol(case.entry[6:end]),opts...)
+    SpecBunch.mass(a["z"];weights,method=case.entry in ("mass_gaussian_jump","mass_joint_voigt") ? :joint : :cosine,friction=case.entry in ("mass_voigt","mass_joint_voigt") ? :voigt : :gaussian,opts...)
 end
 bits(x)=string(reinterpret(UInt64,Float64(x));base=16,pad=16)
 function compare(r,e)

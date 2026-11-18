@@ -15,13 +15,17 @@ program define specbunch, eclass
         display as error "syntax: specbunch mass|buncher varlist, options"
         exit 198
     }
-    syntax varlist(numeric min=1 max=2) [if] [in] [pweight fweight], [Kink(real 0) Method(string) Policy(string) Threads(integer 0) Seed(string) Checkallwindows LPiterations(string) LPretryiterations(string) Draws(integer 499)]
+    syntax varlist(numeric min=1 max=2) [if] [in] [pweight fweight], [Kink(real 0) Method(string) Friction(string) Policy(string) Threads(integer 0) Seed(string) Checkallwindows LPiterations(string) LPretryiterations(string) Draws(integer 499)]
     local inputs `varlist'
     local nv : word count `inputs'
     if ("`subcmd'"=="mass" & `nv'!=1) | ("`subcmd'"=="buncher" & `nv'!=2) error 198
-    if "`method'" == "" local method gaussian
-    if !inlist("`method'","gaussian","voigt","gaussian_jump") error 198
-    local entry `method'
+    if "`method'" == "" local method cosine
+    if "`friction'" == "" local friction gaussian
+    if !inlist("`method'","cosine","joint") error 198
+    if !inlist("`friction'","gaussian","voigt") error 198
+    local entry `friction'
+    if "`method'"=="joint" local entry gaussian_jump
+    if "`method'"=="joint" & "`friction'"=="voigt" local entry joint_voigt
     if "`subcmd'" == "buncher" local entry bmean
     if "`seed'" == "" {
         local seed 1
@@ -123,7 +127,9 @@ program define specbunch, eclass
     }
     plugin call _specbunch_plugin, release
     ereturn local cmd "specbunch"
-    ereturn local method "`entry'"
+    ereturn local method "`method'"
+    ereturn local friction "`friction'"
+    if "`entry'"=="bmean" ereturn local method "buncher_mean"
     local running : word 1 of `inputs'
     ereturn local running_variable "`running'"
     ereturn local input_weight_exp "`exp'"
@@ -132,10 +138,10 @@ program define specbunch, eclass
     ereturn local flags_text `"`e(str_flags_str)'"'
     capture local tier = string(e(tier))
     ereturn local tier_label "`tier'"
-    display as text "specbunch (`entry')" _col(40) "N = " as result %10.0g e(n)
+    display as text "specbunch (`method', `friction')" _col(40) "N = " as result %10.0g e(n)
     display as text "{hline 64}"
     if e(core_status) == 0 {
-        if inlist("`entry'","gaussian","voigt","gaussian_jump") {
+        if inlist("`entry'","gaussian","voigt","gaussian_jump","joint_voigt") {
             display as text "      B             SE(log B)         sigma"
             display as result %12.7g e(B) "    " %12.7g e(se_log_B) "    " %12.7g e(sigma)
             display as text "Policy: `policy'; tier " as result e(tier) as text `"; flags: `e(flags_text)'"'
@@ -154,7 +160,7 @@ end
 // r1...rN/c1 labels; compatible existing matrices avoid repeated allocation.
 program define _specbunch_npmle, eclass
     version 14.1
-    if "`e(cmd)'"!="specbunch" | !inlist("`e(method)'","gaussian","voigt","gaussian_jump") error 301
+    if "`e(cmd)'"!="specbunch" | !inlist("`e(method)'","cosine","joint") error 301
     if e(core_status)!=0 {
         display as error "npmle requires a coherent mass result"
         exit 498
@@ -179,7 +185,7 @@ program define _specbunch_npmle, eclass
         local `key' : display %24.17g e(`key')
     }
     local a 0
-    if "`e(method)'"=="voigt" local a : display %24.17g e(a)
+    if "`e(friction)'"=="voigt" local a : display %24.17g e(a)
     if "`bins'"=="" local bins _none
     plugin call _specbunch_plugin `z' `wvar' if `sample_use', npmle "`B'" "`sigma'" "`a'" "`kink'" "`threads'" "`coreintervals'" "`gridpoints'" "`exactthreshold'" "`maxiterations'" "`lambdamin'" "`lambdamax'" "`lambdapoints'" "`refinepoints'" "`histogramwidth'" "`quadraturetolerance'" "`optimalitytolerance'" "`bins'"
     tempname scalars vectors
@@ -335,6 +341,18 @@ void _specbunch_vector_post(string scalar source)
         n=strtoreal(st_local("len"+strofreal(candidates[1])))
         _specbunch_put_matrix("e(windows)",values[|1,1\n,cols(values)|][,candidates])
         st_matrixcolstripe("e(windows)",(J(nc,1,""),candidate_names'))
+    }
+    nc=0; candidates=J(1,cols(keys),0); candidate_names=J(1,cols(keys),"")
+    for(j=1;j<=cols(keys);j++) {
+        if(substr(keys[j],1,10)=="transform." & strtoreal(st_local("len"+strofreal(j)))>0) {
+            nc++; candidates[nc]=j; candidate_names[nc]=substr(keys[j],11,.)
+        }
+    }
+    if(nc>0) {
+        candidates=candidates[|1\nc|]; candidate_names=candidate_names[|1\nc|]
+        n=strtoreal(st_local("len"+strofreal(candidates[1])))
+        _specbunch_put_matrix("e(transform)",values[|1,1\n,cols(values)|][,candidates])
+        st_matrixcolstripe("e(transform)",(J(nc,1,""),candidate_names'))
     }
 }
 void _specbunch_put_matrix(string scalar target, real matrix value)

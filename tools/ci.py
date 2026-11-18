@@ -15,7 +15,10 @@ run(sys.executable, '-B', r/'tools/check_common.py')
 families=[a.family] if a.family else ['bunch']
 if a.job in ('cores','fixtures'):
     for f in families:build(f+'/core',b/'cores'/f)
-    if a.job=='fixtures':run(sys.executable,'-B',r/'tests/xlang/generate.py','--bunch',b/'cores/bunch'/lib('specbunch'),'--root',b/'xlang/fixtures')
+    if a.job=='fixtures':
+        run('cmake','--build',b/'cores/bunch','--config','Release','--target','sb_test_joint_voigt')
+        run(b/'cores/bunch'/('sb_test_joint_voigt.exe' if os.name=='nt' else 'sb_test_joint_voigt'))
+        run(sys.executable,'-B',r/'tests/xlang/generate.py','--bunch',b/'cores/bunch'/lib('specbunch'),'--root',b/'xlang/fixtures')
 elif a.job=='wheels':
     for f in families:
         name='specbunch' if f=='bunch' else 'specrd'

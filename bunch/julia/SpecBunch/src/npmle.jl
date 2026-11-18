@@ -66,7 +66,7 @@ function npmle(fit::Result,z;weights=nothing,bins=nothing,threads=nothing,core_i
  fit.kind==:mass && !fit.refused || throw(ArgumentError("npmle requires a coherent mass result"))
  kind=_plot_kind(plot)
  z,w=_inputs(z,weights);edges=bins===nothing ? nothing : _vector(bins)
- a=fit.raw["method"]=="voigt" ? fit.raw["a"] : 0.
+ a=fit.raw["friction"]=="voigt" ? fit.raw["a"] : 0.
  o=NpmleOpts(UInt32(sizeof(NpmleOpts)),1,_threads(threads),Int32(core_intervals),Int32(grid_points),Int32(exact_threshold),
              Int32(max_iterations),Int32(lambda_points),Int32(refinement_points),0,fit.B,fit.sigma,a,fit.kink,
              histogram_width===nothing ? 0. : Float64(histogram_width),Float64(lambda_min),Float64(lambda_max),Float64(quadrature_tolerance),Float64(optimality_tolerance))

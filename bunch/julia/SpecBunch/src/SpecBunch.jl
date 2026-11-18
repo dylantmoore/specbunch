@@ -28,23 +28,22 @@ function _massopts(;threads=nothing,seed=1,policy=:tiered,check_all_windows=fals
     min(lp_iterations,lp_retry_iterations)>0 || throw(ArgumentError("LP budgets must be positive"))
     MassOpts(UInt32(sizeof(MassOpts)),1,_threads(threads),check_all_windows ? 2 : 0,UInt64(seed),1,p==:first ? 2 : 0,Int64(lp_iterations),Int64(lp_retry_iterations))
 end
-function _masscall(method,data,o,out)
-    method == :gaussian && return ccall((:sb_mass_gaussian,libspecbunch),Cint,(Ref{MassData},Ref{MassOpts},Ref{Ptr{Cvoid}}),data,o,out)
-    method == :voigt && return ccall((:sb_mass_voigt,libspecbunch),Cint,(Ref{MassData},Ref{MassOpts},Ref{Ptr{Cvoid}}),data,o,out)
-    method == :gaussian_jump && return ccall((:sb_mass_gaussian_jump,libspecbunch),Cint,(Ref{MassData},Ref{MassOpts},Ref{Ptr{Cvoid}}),data,o,out)
-    throw(ArgumentError("method must be :gaussian, :voigt or :gaussian_jump"))
+function _masscall(method,friction,data,o,out)
+    ccall((:sb_mass,libspecbunch),Cint,(Ref{MassData},Ref{MassOpts},Cint,Cint,Ref{Ptr{Cvoid}}),data,o,method==:joint,friction==:voigt,out)
 end
-"""Bunching mass, coherent selection and ranked sensitivity windows; see docs/REFERENCE.md."""
-function mass(z;kink=0.0,weights=nothing,method=:gaussian,policy=:tiered,threads=nothing,seed=1,
+"""Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.
+The transform NamedTuple contains t, t_scaled, cosine, cosine_se, cosine_fit; joint fits
+add sine_scaled, sine_scaled_se and sine_fit. n_points describes the selected window."""
+function mass(z;kink=0.0,weights=nothing,method=:cosine,friction=:gaussian,policy=:tiered,threads=nothing,seed=1,
               check_all_windows=false,lp_iterations=5000,lp_retry_iterations=31250,npmle=false)
     z===nothing && throw(ArgumentError("z is required"))
-    methods=Dict(:gaussian=>:gaussian,:voigt=>:voigt,:gaussian_jump=>:gaussian_jump)
-    haskey(methods,Symbol(method)) || throw(ArgumentError("method must be gaussian, voigt or gaussian_jump"))
+    Symbol(method) in (:cosine,:joint) || throw(ArgumentError("method must be cosine or joint"))
+    Symbol(friction) in (:gaussian,:voigt) || throw(ArgumentError("friction must be gaussian or voigt"))
     z,w=_inputs(z,weights);original_z=z;kink==0 || (z=z .- Float64(kink))
     o=_massopts(;threads,seed,policy,check_all_windows,lp_iterations,lp_retry_iterations)
     out=Ref{Ptr{Cvoid}}(C_NULL)
     GC.@preserve z w begin
-        d=MassData(length(z),pointer(z),_ptr(w));rc=_masscall(methods[Symbol(method)],d,o,out)
+        d=MassData(length(z),pointer(z),_ptr(w));rc=_masscall(Symbol(method),Symbol(friction),d,o,out)
         ans=_finish(rc,out[],:mass);ans.metadata[:kink]=Float64(kink)
         npmle isa Bool || throw(ArgumentError("npmle must be boolean"))
         if npmle ans.metadata[:npmle]=ans.refused ? nothing : SpecBunch.npmle(ans,original_z;weights=w,threads) end

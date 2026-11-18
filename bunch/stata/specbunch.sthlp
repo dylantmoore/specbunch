@@ -2,11 +2,11 @@
 {title:specbunch}
 
 {p}Bunching mass and buncher mean with ranked sensitivity tables.{p_end}
-{cmd:specbunch mass z [if] [in] [pw=weight], method(gaussian) policy(tiered)}
+{cmd:specbunch mass z [if] [in] [pw=weight], method(cosine) friction(gaussian) policy(tiered)}
 {cmd:specbunch buncher z x [if] [in] [pw=weight], draws(499)}
 {cmd:specbunch windows}
 
-{p}Methods: gaussian, voigt, gaussian_jump. Rules: tiered (default), first. Options: kink(real), threads(integer), seed(integer; default 1), checkallwindows, lpiterations(integer; default 5000), lpretryiterations(integer; default 31250). gaussian_jump requires unweighted data. Mean draws must be at least 19.{p_end}
+{p}Methods: cosine (default), joint. Friction: gaussian (default), voigt. Rules: tiered (default), first. Options: kink(real), threads(integer), seed(integer; default 1), checkallwindows, lpiterations(integer; default 5000), lpretryiterations(integer; default 31250). joint requires unweighted data. Mean draws must be at least 19.{p_end}
 {p}e(windows) contains ranked sensitivity columns. Distribution checks use 1=pass, 0=fail, -1=not evaluated. Coherent estimates are returned with flags; refusal means insufficient_data, no_frequency_band, or no_coherent_window.{p_end}
 {p}Flags: cdf_inconsistent (DKW), moments_inconsistent (harmonic bounds), no_valid_distribution (LP exclusion), distribution_check_inconclusive (LP budget), residual_cdf_inconsistent (probit screen), poor_fit (p below .10).{p_end}
 {p}See docs/REFERENCE.md for the full option and result reference. Standard errors are model based, not confidence intervals.{p_end}
@@ -23,3 +23,9 @@
 
 {title:Advanced (solver settings)}
 {p}{opt threads()}, {opt coreintervals()}, {opt gridpoints()}, {opt exactthreshold()}, {opt maxiterations()}, {opt lambdamin()}, {opt lambdamax()}, {opt lambdapoints()}, {opt refinepoints()}, {opt histogramwidth()}, {opt quadraturetolerance()} and {opt optimalitytolerance()} control numerical evaluation. The initial lambda grid extends automatically until BIC has an interior minimum or a search cap is reached; see REFERENCE.md for defaults and meanings.{p_end}
+
+{p}Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.{p_end}
+
+{p}e(transform) contains t, t_scaled, cosine, cosine_se and cosine_fit; joint fits add sine_scaled, sine_scaled_se and sine_fit. e(window_lo), e(window_hi) and e(n_points) describe the selected fitting window. See REFERENCE.md for the pointwise variance formula.{p_end}
+
+{p}All four method/friction combinations are supported. Joint fits are unweighted. Voigt fits use coherence and poor_fit only; Gaussian distribution-shape checks are not applied.{p_end}

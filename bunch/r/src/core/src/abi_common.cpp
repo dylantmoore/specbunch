@@ -38,3 +38,13 @@ SB_API const char* sb_build_info(void) {
   return s.c_str();
 }
 }
+
+extern "C" SB_API int sb_mass(const sb_data* data,const sb_opts_mass* opts,int32_t method,int32_t friction,sb_result** out) {
+  return sbc::guarded([&] {
+    if(out)*out=nullptr;
+    if(method!=SB_METHOD_COSINE && method!=SB_METHOD_JOINT)return sbc::fail(SBC_E_INPUT,"method must be cosine or joint");
+    if(friction!=SB_FRICTION_GAUSSIAN && friction!=SB_FRICTION_VOIGT)return sbc::fail(SBC_E_INPUT,"friction must be gaussian or voigt");
+    if(method==SB_METHOD_COSINE)return friction==SB_FRICTION_GAUSSIAN?sb_mass_gaussian(data,opts,out):sb_mass_voigt(data,opts,out);
+    return friction==SB_FRICTION_GAUSSIAN?sb_mass_gaussian_jump(data,opts,out):sb_mass_joint_voigt(data,opts,out);
+  });
+}

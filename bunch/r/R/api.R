@@ -31,14 +31,17 @@ result <- function(ans, type) {
   out$kinds <- ans[[3L]]
   out$flags <- if (is.null(raw$flags_str) || !nzchar(raw$flags_str)) character() else strsplit(raw$flags_str, ",", fixed = TRUE)[[1L]]
   out$diagnostics <- raw
-  out$simple_ols <- raw[startsWith(names(raw), "simple_ols.")]
-  out$simple_lad <- raw[startsWith(names(raw), "simple_lad.")]
+  out$loglinear_ols <- raw[startsWith(names(raw), "loglinear_ols.")]
+  out$loglinear_lad <- raw[startsWith(names(raw), "loglinear_lad.")]
   out$tier <- if (is.null(raw$tier)) NA_real_ else raw$tier
   windows <- raw[startsWith(names(raw), "windows.")]
   names(windows) <- substring(names(windows), 9L)
   if(type == "mass") for(k in intersect(names(windows),c("cdf_inconsistent","moments_inconsistent","no_valid_distribution","distribution_check_inconclusive","residual_cdf_inconsistent","poor_fit"))) windows[[k]] <- c("not_evaluated","fail","pass")[windows[[k]]+2L]
   if(type == "buncher_mean" && !is.null(windows$poor_fit)) windows$flags <- ifelse(windows$poor_fit>0,"poor_fit", "")
   out$windows <- as.data.frame(windows, optional = TRUE)
+  transform <- raw[startsWith(names(raw), "transform.")]
+  names(transform) <- substring(names(transform),11L)
+  out$transform <- as.data.frame(transform, optional=TRUE)
   out$se_scale <- if(type == "mass") "log(B)" else "estimate"
   out$se <- if(type == "mass") raw$se_log_B else raw$se
   out$window <- if(type == "mass") c(raw$window_lo,raw$window_hi) else c(raw$band_lo,raw$band_hi)
@@ -79,13 +82,15 @@ summary.specbunch_result <- function(object, ...) {
        status = object$status, reason = object$reason, flags = object$flags,
        tier = object$tier, window = object$window, candidate_count = nrow(object$windows))
 }
-#' Estimate bunching mass with ranked window diagnostics
+#' Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.
 #' @export
-mass <- function(z,kink=0,weights=NULL,method=c("gaussian","voigt","gaussian_jump"),
+mass <- function(z,kink=0,weights=NULL,method=c("cosine","joint"),friction=c("gaussian","voigt"),
                  policy="tiered",threads=NULL,seed=1,check_all_windows=FALSE,
                  lp_iterations=5000,lp_retry_iterations=31250,npmle=FALSE) {
   zexpr <- substitute(z)
-  method <- match.arg(method);policy <- match.arg(policy,c("tiered","first"))
+  method <- match.arg(method);friction <- match.arg(friction)
+  entry <- if(method=="joint") {if(friction=="voigt") 4L else 2L} else if(friction=="voigt") 1L else 0L
+  policy <- match.arg(policy,c("tiered","first"))
   z <- numeric_column(z,"z");original_z <- z;kink <- scalar(kink,"kink");if(kink!=0) z <- z-kink
   opts <- options_base(seed,threads);opts$policy <- if(policy=="first") 2L else 0L
   if(!is.logical(check_all_windows)||length(check_all_windows)!=1L||is.na(check_all_windows)) stop("check_all_windows must be logical")
@@ -93,7 +98,7 @@ mass <- function(z,kink=0,weights=NULL,method=c("gaussian","voigt","gaussian_jum
   opts$lp_iterations <- scalar(lp_iterations,"lp_iterations",TRUE,2^53-1)
   opts$lp_retry_iterations <- scalar(lp_retry_iterations,"lp_retry_iterations",TRUE,2^53-1)
   if(min(opts$lp_iterations,opts$lp_retry_iterations)<=0) stop("LP iteration budgets must be positive")
-  out <- result(.Call(C_estimate,match(method,c("gaussian","voigt","gaussian_jump"))-1L,z,NULL,weight_column(weights,length(z)),opts),"mass")
+  out <- result(.Call(C_estimate,entry,z,NULL,weight_column(weights,length(z)),opts),"mass")
   out$kink <- kink
   if(!is.logical(npmle)||length(npmle)!=1L||is.na(npmle)) stop("npmle must be logical")
   if(npmle && !out$refused) {
@@ -129,7 +134,7 @@ npmle <- function(fit,z,weights=NULL,bins=NULL,threads=NULL,core_intervals=12,gr
  xlabel <- npmle_xlabel(substitute(z))
  z <- numeric_column(z,"z");weights <- weight_column(weights,length(z))
  if(!is.null(bins)) bins <- numeric_column(bins,"bins")
- opts <- list(B=fit$B,sigma=fit$sigma,a=if(fit$method=="voigt") fit$a else 0,kink=fit$kink,
+ opts <- list(B=fit$B,sigma=fit$sigma,a=if(fit$friction=="voigt") fit$a else 0,kink=fit$kink,
               threads=if(is.null(threads)) 0 else scalar(threads,"threads",TRUE,2147483647))
  values <- as.list(environment())
  for(k in c("core_intervals","grid_points","exact_threshold","max_iterations","lambda_points","refinement_points")) opts[[k]] <- scalar(values[[k]],k,TRUE,2147483647)

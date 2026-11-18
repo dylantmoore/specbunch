@@ -17,6 +17,7 @@ class _Mean(C.Structure):
 _core = Library("specbunch", "sb")
 for _name in ("mass_gaussian", "mass_voigt", "mass_gaussian_jump"):
     _core.bind(_name, [C.POINTER(_Data), C.POINTER(_Mass), C.POINTER(C.c_void_p)], C.c_int)
+_core.bind("mass", [C.POINTER(_Data), C.POINTER(_Mass), C.c_int32, C.c_int32, C.POINTER(C.c_void_p)], C.c_int)
 _core.bind("bmean", [C.POINTER(_XY), C.POINTER(_Mean), C.POINTER(C.c_void_p)], C.c_int)
 _core.bind("opts_mass_init", [C.POINTER(_Mass)], None)
 _core.bind("opts_bmean_init", [C.POINTER(_Mean)], None)
@@ -31,18 +32,26 @@ def version():
     """Return package version, core version, and core ABI version."""
     return {"package": __version__, "core": _core.fn("version")().decode(), "abi": _core.fn("abi_version")()}
 
-def mass(z, kink=0.0, weights=None, method="gaussian", policy="tiered", threads=None,
+def mass(z, kink=0.0, weights=None, method="cosine", friction="gaussian", policy="tiered", threads=None,
          seed=1, check_all_windows=False, lp_iterations=5000, lp_retry_iterations=31250, npmle=False):
-    """Estimate mass using gaussian, voigt or gaussian_jump; return ranked windows.
+    """Estimate mass by weighted nonlinear least squares in transform levels.
+
+    method="cosine" fits the empirical cosine transform; method="joint" also
+    fits sine and allows a density jump. friction is "gaussian" or "voigt".
+    Fixed inverse-variance weights use the transform variance; the solver is
+    Gauss-Newton/Newton. Return ranked windows and log-linear OLS/LAD companions.
+    result.transform contains t, t_scaled, cosine, cosine_se, cosine_fit; joint
+    fits add sine_scaled, sine_scaled_se and sine_fit. n_points describes the
+    selected fitting window, separate from the 401-point display grid.
 
     policy is tiered (default) or first; checks flag coherent answers. The neutral
     bootstrap seed is 1. Distribution checks follow selection unless
     check_all_windows=True. LP budgets count simplex iterations, not time.
     Missing/nonfinite rows and nonpositive weights are removed together.
-    gaussian_jump does not support weights. See docs/REFERENCE.md for all fields.
+    The joint method does not support weights. See docs/REFERENCE.md for all fields.
     """
-    methods={"gaussian":"gaussian", "voigt":"voigt", "gaussian_jump":"gaussian_jump"}
-    if method not in methods: raise ValueError("method must be gaussian, voigt or gaussian_jump")
+    if method not in ("cosine","joint"): raise ValueError("method must be cosine or joint")
+    if friction not in ("gaussian","voigt"): raise ValueError("friction must be gaussian or voigt")
     if policy not in POLICIES: raise ValueError("policy must be tiered or first")
     if not isinstance(check_all_windows, bool): raise TypeError("check_all_windows must be boolean")
     input_z=z
@@ -55,7 +64,7 @@ def mass(z, kink=0.0, weights=None, method="gaussian", policy="tiered", threads=
     o.lp_iterations=integer(lp_iterations,64);o.lp_retry_iterations=integer(lp_retry_iterations,64)
     if min(o.lp_iterations,o.lp_retry_iterations)<=0:raise ValueError("LP iteration budgets must be positive")
     d=_Data(len(z),pointer(z),pointer(w))
-    result=Result(*_core.call("mass_"+methods[method],d,o),"mass")
+    result=Result(*_core.call("mass",d,o,int(method=="joint"),int(friction=="voigt")),"mass")
     result.kink=float(kink)
     if not isinstance(npmle,bool):raise TypeError("npmle must be boolean")
     if npmle:result.npmle=None if result.refused else globals()["npmle"](result,input_z,weights=w,threads=threads)
@@ -152,7 +161,7 @@ def npmle(fit,z,weights=None,bins=None,*,threads=None,core_intervals=12,grid_poi
     if z is None:raise ValueError("z is required")
     edges=arrays(bins)[0] if bins is not None else None
     o=_Npmle();_core.fn("opts_npmle_init")(C.byref(o))
-    o.B=fit.B;o.sigma=fit.sigma;o.a=fit.raw.get("a",0) if fit.raw["method"]=="voigt" else 0;o.kink=fit.kink
+    o.B=fit.B;o.sigma=fit.sigma;o.a=fit.raw.get("a",0) if fit.raw["friction"]=="voigt" else 0;o.kink=fit.kink
     values=locals()
     for k in ("core_intervals","grid_points","exact_threshold","max_iterations","lambda_points","refinement_points"):
         setattr(o,k,integer(values[k]))

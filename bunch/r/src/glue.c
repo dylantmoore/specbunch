@@ -78,9 +78,7 @@ static SEXP estimate(SEXP entry, SEXP z, SEXP x, SEXP w, SEXP opts) {
     o.distribution_checks=(int)option(opts,"distribution_checks",1); o.policy=(int)option(opts,"policy",0); o.check_all_windows=(int)option(opts,"check_all_windows",0);
     o.lp_iterations=(int64_t)option(opts,"lp_iterations",5000); o.lp_retry_iterations=(int64_t)option(opts,"lp_retry_iterations",31250);
     int method=Rf_asInteger(entry);
-    if(method==0) rc=sb_mass_gaussian(&data,&o,&r);
-    else if(method==1) rc=sb_mass_voigt(&data,&o,&r);
-    else if(method==2) rc=sb_mass_gaussian_jump(&data,&o,&r);
+    if(method==0 || method==1 || method==2 || method==4) rc=sb_mass(&data,&o,method==2 || method==4,method==1 || method==4,&r);
     else Rf_error("Unknown native estimator");
   }
   R_SetExternalPtrAddr(xp,r);

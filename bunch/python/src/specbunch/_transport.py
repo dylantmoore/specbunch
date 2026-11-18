@@ -120,8 +120,13 @@ class Result:
             import pandas as pd
             self.windows=pd.DataFrame(columns)
         except ImportError:self.windows=columns
-        self.simple={prefix:{k[len(prefix)+1:]:v for k,v in raw.items() if k.startswith(prefix+".")} for prefix in ("simple_ols","simple_lad")}
-        self.simple_ols=self.simple["simple_ols"];self.simple_lad=self.simple["simple_lad"]
+        self.simple={prefix:{k[len(prefix)+1:]:v for k,v in raw.items() if k.startswith(prefix+".")} for prefix in ("loglinear_ols","loglinear_lad")}
+        self.loglinear_ols=self.simple["loglinear_ols"];self.loglinear_lad=self.simple["loglinear_lad"]
+        columns={k[10:]:v for k,v in raw.items() if k.startswith("transform.")}
+        try:
+            import pandas as pd
+            self.transform=pd.DataFrame(columns)
+        except ImportError:self.transform=columns
         self.diagnostics = raw.copy()
 
     def __getattr__(self, name):

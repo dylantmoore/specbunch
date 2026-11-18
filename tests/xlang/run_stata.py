@@ -124,7 +124,7 @@ if not a.compare_only:
     aliases={'core_intervals':'coreintervals','grid_points':'gridpoints','exact_threshold':'exactthreshold','max_iterations':'maxiterations','lambda_min':'lambdamin','lambda_max':'lambdamax','lambda_points':'lambdapoints','refinement_points':'refinepoints','histogram_width':'histogramwidth','quadrature_tolerance':'quadraturetolerance','optimality_tolerance':'optimalitytolerance'}
     opts=' '.join(f'{aliases.get(k,k)}({v})' for k,v in c['options'].items())+(f' threads({t})' if t else '')
     cmd='specbunch npmle';weight=''
-   else: cmd=f'specbunch mass z'; opts+=' method('+c['entry'][5:]+')' 
+   else: cmd=f'specbunch mass z'; opts+=' method('+('joint' if c['entry'] in ('mass_gaussian_jump','mass_joint_voigt') else 'cosine')+') friction('+('voigt' if c['entry'] in ('mass_voigt','mass_joint_voigt') else 'gaussian')+')'
    lines += [cmd+weight+', '+opts, f'{"_npmle_export" if c["entry"]=="npmle" else "_xlang_export"} "{out}/{c["id"]}_{t}.tsv"',f'display "DONE {c["id"]} {t}"']
  lines += ['display "XLANG_STATA_PASS"','exit, clear']
  plan=out/'plan.do'; plan.write_text('\n'.join(lines)+'\n')

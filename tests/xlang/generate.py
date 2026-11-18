@@ -11,11 +11,11 @@ p = argparse.ArgumentParser()
 p.add_argument("--bunch", type=Path, required=True)
 p.add_argument("--rd", type=Path)
 p.add_argument("--root", type=Path, default=Path(os.environ.get("SPECPKG_BUILD", str(Path(tempfile.gettempdir())/"spectral-build"))) / 'xlang/fixtures')
-p.add_argument("--entry", choices=["mass_gaussian","mass_voigt","mass_gaussian_jump","bmean","rd","npmle"])
+p.add_argument("--entry", choices=["mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","rd","npmle"])
 a = p.parse_args(); a.root.mkdir(parents=True, exist_ok=True)
 if not a.entry:
     cases = []
-    for entry in ("mass_gaussian","mass_voigt","mass_gaussian_jump","bmean","npmle"):
+    for entry in ("mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","npmle"):
         subprocess.run([sys.executable,"-I","-B",__file__,"--bunch",str(a.bunch),"--root",str(a.root),"--entry",entry],check=True)
         cases.extend(read_json(a.root/(entry+".json.gz"))["cases"])
     assert any(c["expected"]["status"] > 0 for c in cases), "missing refusal fixture"
@@ -23,7 +23,7 @@ if not a.entry:
     manifest={"format":"spectral-xlang-v1","byte_order":"little","float":"IEEE754-binary64","cases":cases,
               "libraries":{str(p):{"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in (a.bunch,)}}
     write_json(a.root/"manifest.json.gz",manifest)
-    for entry in ("mass_gaussian","mass_voigt","mass_gaussian_jump","bmean","npmle"):
+    for entry in ("mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","npmle"):
         (a.root/(entry+".json.gz")).unlink()
     print("saved",len(cases),"cases",flush=True)
     raise SystemExit(0)
@@ -44,7 +44,7 @@ for entry in (a.entry,):
             arrays["z"] += 0.1
         if isrd and shape == "refusal":
             arrays["d"][:] = 0
-        if shape == "skew" and entry != "mass_gaussian_jump":
+        if shape == "skew" and entry not in ("mass_gaussian_jump","mass_joint_voigt"):
             arrays["weights"] = np.ascontiguousarray(1.0 + (np.arange(1200)%3) * (1.0 if isrd else 0.25))
         cols = save_arrays(a.root, entry+"_"+shape, arrays)
         for policy in policies:

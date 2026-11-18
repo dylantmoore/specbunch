@@ -15,8 +15,8 @@ for case,(n,friction,jump) in enumerate(cases):
  latent[rng.random(n)<.2]=0
  z=latent+rng.normal(0,.04,n)
  if friction=='voigt':z+=.015*rng.standard_cauchy(n)
- method='gaussian_jump' if friction=='gaussian' and jump else friction
- mass=sb.mass(z,method=method,threads=4,seed=1)
+ method='joint' if friction=='gaussian' and jump else 'cosine'
+ mass=sb.mass(z,method=method,friction=friction,threads=4,seed=1)
  assert not mass.refused,(case,mass.reason)
  fit=sb.npmle(mass,z,threads=4)
  print(case,n,friction,jump,'native',fit.status,'lambda',fit.lambda_,'kkt',fit.kkt,flush=True)

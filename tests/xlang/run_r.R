@@ -44,7 +44,7 @@ public <- function(case,a,threads) {
   }
   if(case$entry=="rd") return(do.call(specrd::rd,c(list(w=a$w,d=a$d,y=a$y,weights=a$weights),opts)))
   if(case$entry=="bmean") return(do.call(specbunch::buncher_mean,c(list(z=a$z,x=a$x,weights=a$weights),opts)))
-  do.call(specbunch::mass,c(list(z=a$z,weights=a$weights,method=sub("mass_","",case$entry)),opts))
+  do.call(specbunch::mass,c(list(z=a$z,weights=a$weights,method=if(case$entry %in% c("mass_gaussian_jump","mass_joint_voigt")) "joint" else "cosine",friction=if(case$entry %in% c("mass_voigt","mass_joint_voigt")) "voigt" else "gaussian"),opts))
 }
 bits <- function(x) {
   b <- writeBin(as.double(x),raw(),size=8,endian="big")

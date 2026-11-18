@@ -11,7 +11,7 @@ using Test, SpecBunch
     @test_throws InexactError mass(zeros(100); seed=-1)
     @test_throws InexactError mass(zeros(100); threads=1.5)
     @test mass(zeros(10)).reason == "insufficient_data"
-    @test_throws CoreError mass(zeros(100); method=:gaussian_jump,weights=ones(100))
+    @test_throws CoreError mass(zeros(100); method=:joint,weights=ones(100))
     z=[sin(i*1.71)*0.4 + sin(i*0.31)*0.03 for i in 1:300]
     x=[1.0+cos(i*0.7) for i in 1:300]
     a=buncher_mean(z,x;threads=1,draws=19)
@@ -24,9 +24,11 @@ using Test, SpecBunch
     @test_throws DimensionMismatch buncher_mean(z,x[1:end-1])
     missingz=Union{Missing,Float64}[z;missing]
     @test isequal(buncher_mean(missingz,[x;NaN];threads=1,draws=19).mu,a.mu)
-    for method in (:gaussian,:voigt,:gaussian_jump)
-        r=mass(zeros(200);method,threads=1)
+    for (method,friction) in ((:cosine,:gaussian),(:cosine,:voigt),(:joint,:gaussian),(:joint,:voigt))
+        r=mass(zeros(200);method,friction,threads=1)
         @test r.windows isa NamedTuple
+        @test r.transform isa NamedTuple
+        @test haskey(r.transform,:cosine)
         @test r.se_scale == "log(B)"
         @test isequal(r.band,r.window)
         @test r.flags isa AbstractVector

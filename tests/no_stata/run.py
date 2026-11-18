@@ -39,9 +39,9 @@ for case in read_json(a.fixtures/'manifest.json.gz')['cases']:
         o=case['options']; entry=case['entry'].removeprefix('mass_')
         if entry=='npmle':
             mo=case['mass_options'];kink=mo.get('kink',0)
-            call('run',mo['method'],kink,t,1,0,1,1,5000,31250,2,1,499)
+            call('run',('joint_voigt' if mo['friction']=='voigt' else 'gaussian_jump') if mo['method']=='joint' else mo['friction'],kink,t,1,0,1,1,5000,31250,2,1,499)
             names=macro('scalar_names').split();h.host_matrix(1,len(names));call('fetch','scalars','out');mass=dict(zip(names,numbers('bits')));call('release')
-            call('npmle',mass['B'],mass['sigma'],mass.get('a',0) if mo['method']=='voigt' else 0,kink,t,o.get('core_intervals',12),o.get('grid_points',1001),o.get('exact_threshold',1000),o.get('max_iterations',200),o.get('lambda_min',.01),o.get('lambda_max',10000),o.get('lambda_points',15),o.get('refinement_points',9),o.get('histogram_width',0),o.get('quadrature_tolerance',1e-9),o.get('optimality_tolerance',1e-7),'_none')
+            call('npmle',mass['B'],mass['sigma'],mass.get('a',0) if mo['friction']=='voigt' else 0,kink,t,o.get('core_intervals',12),o.get('grid_points',1001),o.get('exact_threshold',1000),o.get('max_iterations',200),o.get('lambda_min',.01),o.get('lambda_max',10000),o.get('lambda_points',15),o.get('refinement_points',9),o.get('histogram_width',0),o.get('quadrature_tolerance',1e-9),o.get('optimality_tolerance',1e-7),'_none')
         else:
             call('run',entry,0,t,o.get('seed',1),POLICIES[o.get('policy','tiered')], 1,1,5000,31250,2,1,499)
         raw={}; scalar_names=macro('scalar_names').split()

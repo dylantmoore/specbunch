@@ -1,3 +1,4 @@
+#include "transform_output.hpp"
 #include "private_policy.hpp"
 
 
@@ -26,7 +27,7 @@ namespace {
 enum St { ST_OK = 0, ST_PILOT, ST_PILOTB, ST_UH, ST_NOBANDS, ST_NOVALID, ST_INVALID, ST_FEWPOS };
 const char* const STNAME[8] = {"ok", "no_frequency_band", "no_frequency_band", "no_coherent_window", "no_coherent_window",
                                "no_coherent_window", "no_coherent_window", "insufficient_data"};
-const char* const EST[6] = {"quadratic_reference", "simple_ols", "simple_lad", "ols_ranked", "lad_ranked", "gaussian.rank1"};
+const char* const EST[6] = {"quadratic_reference", "loglinear_ols", "loglinear_lad", "ols_ranked", "lad_ranked", "gaussian.rank1"};
 // Vendor policy ordinal 1 selects the fixed reference band.
 constexpr Policy reference_band_policy = static_cast<Policy>(1);
 constexpr int NEST = 6, CW = 9;
@@ -263,6 +264,7 @@ int mass_gaussian_impl(const sb_data* data, const sb_opts_mass* opts_in, sb_resu
   }
   if (o.distribution_checks) R->setv("distribution_summaries", sums);
   sbpublic::finish(*R,"gaussian");
+  sbtransform::add(*data,o.threads,*R);
   R->finish_names();
   *out = reinterpret_cast<sb_result*>(guard.release());
   return SBC_OK;
@@ -359,6 +361,7 @@ int mass_voigt_impl(const sb_data* data, const sb_opts_mass* opts_in, sb_result*
   }
   sbpublic::add_simple(data,o,*R);
   sbpublic::finish(*R,"voigt");
+  sbtransform::add(*data,o.threads,*R);
   R->finish_names();
   *out = reinterpret_cast<sb_result*>(guard.release());
   return SBC_OK;

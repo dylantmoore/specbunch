@@ -28,6 +28,10 @@ function Base.getproperty(r::Result, s::Symbol)
     s == :se && return get(raw, kind == :mass ? "se_log_B" : "se", NaN)
     s == :window && return get(raw, "win", r.band)
     s == :band && return kind == :mass ? (get(raw,"window_lo",NaN),get(raw,"window_hi",NaN)) : (get(raw,"band_lo",NaN),get(raw,"band_hi",NaN))
+    if s == :transform
+        keys_=sort!([k for k in keys(raw) if startswith(k,"transform.")])
+        return (;(Symbol(k[11:end])=>raw[k] for k in keys_)...)
+    end
     if s == :windows
         keys_=sort!([k for k in keys(raw) if startswith(k,"windows.")])
         checks=("cdf_inconsistent","moments_inconsistent","no_valid_distribution","distribution_check_inconclusive","residual_cdf_inconsistent","poor_fit")
@@ -35,7 +39,7 @@ function Base.getproperty(r::Result, s::Symbol)
         if kind==:bmean && haskey(columns,:poor_fit) columns[:flags]=[x>0 ? "poor_fit" : "" for x in columns[:poor_fit]] end
         return (;(k=>columns[k] for k in sort!(collect(keys(columns))))...)
     end
-    if s in (:simple_ols,:simple_lad)
+    if s in (:loglinear_ols,:loglinear_lad)
         prefix=String(s)*"."
         return Dict(k[length(prefix)+1:end]=>v for (k,v) in raw if startswith(k,prefix))
     end
@@ -44,8 +48,8 @@ function Base.getproperty(r::Result, s::Symbol)
     throw(ArgumentError("unknown result property $s; all named fields are in raw"))
 end
 Base.propertynames(r::Result, private::Bool=false) = Tuple(unique(vcat(
-    [:status,:raw,:kind,:refused,:reason,:flags,:tier,:se,:se_scale,:window,:band,:windows,:diagnostics,:simple,:flag_bits,:policy],
-    r.kind == :mass ? [:simple_ols,:simple_lad] : r.kind == :bmean ? Symbol[] : Symbol[],
+    [:status,:raw,:kind,:refused,:reason,:flags,:tier,:se,:se_scale,:window,:band,:windows,:transform,:diagnostics,:simple,:flag_bits,:policy],
+    r.kind == :mass ? [:loglinear_ols,:loglinear_lad] : r.kind == :bmean ? Symbol[] : Symbol[],
     Symbol.(collect(keys(r.raw))))))
 function Base.show(io::IO, r::Result)
     key = r.kind == :mass ? :B : r.kind == :bmean ? :mu : :tau

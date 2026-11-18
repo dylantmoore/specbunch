@@ -41,6 +41,7 @@ class Direct:
             ("mass_gaussian", MassData, MassOpts, "opts_mass_init"),
             ("mass_voigt", MassData, MassOpts, "opts_mass_init"),
             ("mass_gaussian_jump", MassData, MassOpts, "opts_mass_init"),
+            ("mass_joint_voigt", MassData, MassOpts, "opts_mass_init"),
             ("bmean", MeanData, MeanOpts, "opts_bmean_init")]
         if not rd:
             self.f("opts_npmle_init").argtypes=[ct.POINTER(NpmleOpts)]

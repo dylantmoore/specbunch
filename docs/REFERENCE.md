@@ -4,15 +4,18 @@
 
 ## Mass
 
-Python: `mass(z, kink=0, weights=None, method="gaussian", policy="tiered", threads=None, seed=1, check_all_windows=False, lp_iterations=5000, lp_retry_iterations=31250, npmle=False)`.
-R uses the same names with `NULL` and `FALSE`; Julia uses keyword arguments and method/policy symbols. Stata uses `specbunch mass z [if] [in] [pw=weight], method(gaussian) policy(tiered)`.
+The headline estimator is weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits the sine transform. The companions are log-linear OLS and LAD on the reference band.
+
+Python: `mass(z, kink=0, weights=None, method="cosine", friction="gaussian", policy="tiered", threads=None, seed=1, check_all_windows=False, lp_iterations=5000, lp_retry_iterations=31250, npmle=False)`.
+R uses the same names with `NULL` and `FALSE`; Julia uses keyword arguments and method/friction/policy symbols. Stata uses `specbunch mass z [if] [in] [pw=weight], method(cosine) friction(gaussian) policy(tiered)`.
 
 | Option | Meaning |
 |---|---|
 | z | One-dimensional observed running variable. |
 | kink | Location of the bunching atom, subtracted before fitting; default zero. |
 | weights | Optional positive observation weights; rows with nonfinite inputs or nonpositive weights are removed together. |
-| method | `gaussian` fits cosine-transform levels with Gaussian friction; `voigt` uses Gaussian plus Cauchy friction for sensitivity; `gaussian_jump` jointly fits cosine and sine allowing a density jump at the kink. |
+| method | `cosine` (default) fits only the empirical cosine transform; `joint` jointly fits cosine and sine, allowing a density jump at the kink. |
+| friction | `gaussian` (default) uses Gaussian friction; `voigt` uses symmetric Gaussian plus Cauchy friction. |
 | policy | `tiered` selects by the tiers below; `first` selects the highest-ranked coherent window and reports failed checks as flags. |
 | threads | Core thread count; omitted, zero or negative uses `OMP_NUM_THREADS` when set, otherwise the core default. |
 | seed | Nonnegative integer bootstrap seed, with neutral default 1. |
@@ -23,7 +26,7 @@ R uses the same names with `NULL` and `FALSE`; Julia uses keyword arguments and 
 
 Stata spells the window-check and LP options `checkallwindows`, `lpiterations()` and `lpretryiterations()`; `kink()`, `threads()` and `seed()` have the meanings above.
 
-`gaussian_jump` currently requires unweighted observations. Invalid argument types or unsupported options raise errors; inadequate statistical information returns a refused result. `simple_ols` and `simple_lad` report log-linear OLS and LAD estimates on the fixed reference frequency band alongside each mass result.
+`method="joint"` requires unweighted observations. Invalid argument types or unsupported options raise errors; inadequate statistical information returns a refused result. `loglinear_ols` and `loglinear_lad` report log-linear OLS and LAD estimates on the fixed reference frequency band alongside each mass result.
 
 The default rule selects the highest-ranked coherent window in the first nonempty tier: (1) all checks pass; (2) fit test passes, with distribution-shape flags allowed; (3) distribution-shape checks pass, with a poor-fit flag allowed; (4) any coherent window. An inconclusive distribution check is distinguished from a demonstrated shape failure. The selected tier is returned as `tier` (1–4). The `first` rule does not use checks to select the window.
 
@@ -47,9 +50,9 @@ The first two fields define coherence and are not warning flags. A coherent answ
 
 ## Returned mass fields and windows
 
-`B` is the estimated atom share; `sigma` is Gaussian friction standard deviation; `se_log_B` and `se_log_sigma` are model-based standard errors on log scales; `fit_p` is the window fit-test p-value. Voigt additionally returns Cauchy scale `a`, Gaussian variance `s2`, equivalent scale `sigma_eq` and its `se_log_sigma_eq`. For Voigt, `se_log_sigma` is the retained alias of `se_log_sigma_eq`, not a standard error for the Gaussian component alone; its coherence scale is `sigma_eq`, so pure Cauchy friction is allowed. The joint fit additionally returns `jump`, the coefficient of the sine-transform term exp(-sigma² t²/2)/t associated with a right-minus-left density jump. Standard errors are conditional on the selected fit and are not confidence intervals.
+`B` is the estimated atom share; `sigma` is Gaussian friction standard deviation; `se_log_B` and `se_log_sigma` are model-based standard errors on log scales; `fit_p` is the window fit-test p-value. Voigt additionally returns Cauchy scale `a`, Gaussian variance `s2`, equivalent scale `sigma_eq` and its `se_log_sigma_eq`. For Voigt, `se_log_sigma` is the retained alias of `se_log_sigma_eq`, not a standard error for the Gaussian component alone; its coherence scale is `sigma_eq`, so pure Cauchy friction is allowed. The joint fit additionally returns `jump`, the coefficient of the sine-transform term phi(t)/t associated with a right-minus-left density jump. Standard errors are conditional on the selected fit and are not confidence intervals.
 
-`rank` identifies the selected candidate in rank order; `window_lo` and `window_hi` are its frequency endpoints and the `_scaled` versions multiply these by `sigma_pilot`. `sigma_pilot` is the pilot friction scale, `n` the retained row count, `n_input` the input row count, `n_eff` the effective sample size when provided, `W` the total weight, `weighted` the weight indicator, `seed` the seed used and `threads_used` the actual thread count. `method`, `policy`, `se_note`, `flags_str` and `check_outcomes` describe the estimate and raw check encoding. Simple results have `B`, `sigma`, `status`, `m` (frequency count) and `ndrop` (discarded frequency count).
+`rank` identifies the selected candidate in rank order; `window_lo` and `window_hi` are its frequency endpoints and the `_scaled` versions multiply these by `sigma_pilot`. `sigma_pilot` is the pilot friction scale, `n` the retained row count, `n_input` the input row count, `n_eff` the effective sample size when provided, `W` the total weight, `weighted` the weight indicator, `seed` the seed used and `threads_used` the actual thread count. `method`, `friction`, `estimator`, `policy`, `se_note`, `flags_str` and `check_outcomes` describe the estimate and raw check encoding. Simple results have `B`, `sigma`, `status`, `m` (frequency count) and `ndrop` (discarded frequency count).
 
 The default `windows` table has one row per candidate in rank order, with `rank`, `window_lo`, `window_hi`, `window_lo_scaled`, `window_hi_scaled`, `n_points`, `B`, `sigma`, `se_log_B`, `se_log_sigma`, `fit_p`, `fit_converged`, `coherent_values`, `coherent`, the six check columns above, and `selected`. Voigt adds `a`, `s2`, `sigma_eq`; the joint method adds `jump`. `coherent` and `selected` are 0/1 indicators. Each check cell is `pass`, `fail` or `not_evaluated`; raw C and Stata encode these as 1, 0 and -1. Unevaluated checks must not be interpreted as passing. Enabling all-window checks does not change the selected answer.
 
@@ -74,7 +77,7 @@ Pass an explicit seed to reproduce a particular fit-test realization. The same b
 Python: `npmle(fit, z, weights=None, bins=None, *, plot="both", threads=None, core_intervals=12, grid_points=1001, exact_threshold=1000, max_iterations=200, lambda_min=.01, lambda_max=10000, lambda_points=15, refinement_points=9, histogram_width=None, quadrature_tolerance=1e-9, optimality_tolerance=1e-7)`.
 R and Julia expose the same names with their usual null and keyword conventions. `mass(..., npmle=True)` in Python, `npmle=TRUE` in R, and `npmle=true` in Julia attach the default postestimation result; a refused mass result remains a refusal without a spline fit. Stata uses `specbunch npmle` after `specbunch mass`.
 
-The latent model is an atom of mass B at the kink plus a smooth density of total mass 1−B. Each side has its own clamped cubic B-spline basis, allowing distinct density limits at the kink. B and the friction parameters are fixed at the supplied mass estimate. Gaussian friction is used for `gaussian` and `gaussian_jump`; `voigt` convolves a Gaussian of variance `s2` with a Cauchy of scale `a`, including the pure-Cauchy boundary.
+The latent model is an atom of mass B at the kink plus a smooth density of total mass 1−B. Each side has its own clamped cubic B-spline basis, allowing distinct density limits at the kink. B and the friction parameters are fixed at the supplied mass estimate. The `friction` argument determines the convolution for either method: `gaussian` uses a Gaussian; `voigt` convolves a Gaussian of variance `s2` with a Cauchy of scale `a`, including the pure-Cauchy boundary.
 
 The negative log-likelihood is convex in the nonnegative spline coefficients subject to their integral being 1−B. The objective adds `(lambda/2) theta' D'D theta` independently on each side, where D takes second differences of the spline heights. A deterministic active-set Newton method solves this constrained problem to the reported KKT tolerance. There is no sample truncation: every retained observation contributes, including remote tails. Observation weights are rescaled to sum to the Kish effective sample size `(sum w)^2/sum(w^2)`; provide the same weights used for the mass estimate when reproducing its weighted sample.
 
@@ -181,3 +184,31 @@ fixture, actual/reference value, and relative difference. Selected-answer fixtur
 flips are counted explicitly. NPMLE curves have a looser reporting tolerance of
 relative 1e-6 or absolute 1e-8 (the larger allowance); exceeding it is reported,
 not a cross-platform failure. These tolerances do not change estimator numerics.
+
+The C ABI retains version 1, existing option layouts and existing entry points. The additive `sb_mass(data, opts, method, friction, out)` entry point accepts `SB_METHOD_COSINE` or `SB_METHOD_JOINT` and `SB_FRICTION_GAUSSIAN` or `SB_FRICTION_VOIGT`.
+
+## Transform fit data
+
+Every mass result includes a numeric `transform` table (Python pandas DataFrame when available, otherwise a dict of NumPy arrays; R data.frame; Julia NamedTuple of vectors; Stata e(transform)). No transform plotting code is included.
+The table uses 401 equally spaced frequencies, from 0.1/pilot below the lowest candidate endpoint (clipped at zero) to 0.2/pilot beyond the highest candidate endpoint. It is empty when no candidate frequency range exists. Refused results with a range retain empirical curves but have missing fitted curves.
+
+| Column | Meaning |
+|---|---|
+| t | Frequency in the units of the centered running variable. |
+| t_scaled | Frequency multiplied by sigma_pilot. |
+| cosine | Empirical cosine transform at t. |
+| cosine_se | Pointwise standard error of the empirical cosine transform from its own variance. |
+| cosine_fit | B times the fitted friction transform, evaluated over the whole grid. |
+| sine_scaled | For joint fits, t times the empirical sine transform. |
+| sine_scaled_se | For joint fits, t times the pointwise standard error of the empirical sine transform. |
+| sine_fit | For joint fits, jump times the fitted friction transform (the fitted t-scaled sine curve). |
+
+`window_lo`, `window_hi` and their scaled versions identify the selected window; `n_points` gives its number of fitting frequencies. These frequencies are distinct from the display grid. Weighted pointwise variances use sum(w_i^2 (f_i - weighted_mean(f))^2) / sum(w_i)^2, with no degrees-of-freedom correction. Curves are diagnostic evaluations after selection and never feed back into the fit.
+
+## Joint transform fit with Voigt friction
+
+All four method/friction combinations are supported. For symmetric Voigt friction, `phi(t) = exp(-a*abs(t) - s2*t*t/2)`; the joint model fits `B*phi(t)` to the empirical cosine transform and `jump*phi(t)/t` to the empirical sine transform. Convolution by symmetric friction multiplies both Fourier components by the same real characteristic function, so the jump term carries the same phi. The covariance weights are fixed from the empirical cosine/sine covariance at each frequency.
+
+The joint Voigt solver profiles the two linear coefficients (B and the scaled jump) exactly, then uses constrained Gauss–Newton steps with line search for nonnegative a and s2, checking both friction boundaries. Ranked windows use the joint Gaussian frequency-grid and visibility-extension design: at least 11 frequencies, a pilot-scaled spacing of 0.05 from 0.2 to an initial upper bound of 4, extended up to 8 when signal remains visible. Its fit test uses 499 deterministic sign-multiplier draws, refitting the joint model and comparing the maximum standardized cosine/sine residual. Passing windows are ranked by length then lower endpoint; remaining windows by descending fit p-value, length, then lower endpoint. The public tiered/first rules then choose a coherent answer.
+
+Joint fits are unweighted. With Voigt friction, coherence requires convergence, 0<B<1, a>=0, s2>=0 and sigma_eq=a+sqrt(a*a+s2)>0. Both Voigt methods apply only the poor_fit screen; Gaussian distribution-shape checks remain not_evaluated even with check_all_windows=True. A coherent estimate failing the fit test is returned with poor_fit. Standard errors use inverse Gauss–Newton information, conditioning on the active friction boundary when a parameter is zero.
