@@ -3,6 +3,7 @@
 #include <cmath>
 #include <algorithm>
 #include <numeric>
+#include <limits>
 namespace sbnpmle {
 using std::vector;
 struct Likelihood {
@@ -57,7 +58,10 @@ inline SplineFit optimize(const Likelihood& model,double lambda,const vector<dou
   double fn=INFINITY;bool accepted=false;
   for(int ls=0;ls<60;++ls){for(int j=0;j<m;++j)trial[j]=std::max(0.,fit.p[j]+alpha*direction[j]);double sum=std::accumulate(trial.begin(),trial.end(),0.);for(double&v:trial)v/=sum;model.evaluate(trial,lambda,fn,temp);
    bool stable=std::isfinite(fn);if(stable)for(size_t i=0;i<prob.size();++i)if(temp[i]<.01*prob[i]){stable=false;break;}
-   if(stable&&fn<=objective+1e-4*alpha*gd){accepted=true;break;}alpha*=.5;}
+   // Near stationarity, the predicted decrease can be below objective
+   // summation roundoff. Accept within that bound; KKT still decides convergence.
+   double roundoff=8*std::numeric_limits<double>::epsilon()*std::max(1.,std::fabs(objective));
+   if(stable&&fn<=objective+1e-4*alpha*gd+roundoff){accepted=true;break;}alpha*=.5;}
   if(!accepted)break;fit.p.swap(trial);
  }
  model.evaluate(fit.p,lambda,objective,prob,&gradient,&hessian);
