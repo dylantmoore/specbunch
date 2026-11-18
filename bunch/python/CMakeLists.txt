@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.20)
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/native/common/macos_deployment.cmake")
+  include("${CMAKE_CURRENT_LIST_DIR}/native/common/macos_deployment.cmake")
+else()
+  include("${CMAKE_CURRENT_LIST_DIR}/../../common/macos_deployment.cmake")
+endif()
+project(specbunch_python LANGUAGES C CXX)
+if(CMAKE_BINARY_DIR MATCHES "CloudStorage|Google ?Drive")
+  message(FATAL_ERROR "Build outside synced folders")
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/native/bunch/core/CMakeLists.txt")
+  set(CORE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/native/bunch/core")
+else()
+  set(CORE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../core")
+endif()
+add_subdirectory("${CORE_SOURCE}" core)
+install(TARGETS specbunch LIBRARY DESTINATION specbunch RUNTIME DESTINATION specbunch)
+
+# Preserve the notice for the statically linked LP solver as well as LLVM's notice.
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/core/highs/src/highs_ext/LICENSE.txt"
+        DESTINATION specbunch/licenses RENAME HiGHS-LICENSE.txt)

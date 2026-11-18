@@ -1,0 +1,51 @@
+[build-system]
+requires = ["scikit-build-core>=0.11,<2"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "specbunch"
+version = "0.1.0"
+description = "Spectral bunching mass and buncher mean estimators"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.23"]
+authors = [{name = "D. Moore"}]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+plot = ["matplotlib>=3.5"]
+
+[tool.scikit-build]
+wheel.py-api = "py3"
+wheel.packages = ["src/specbunch"]
+sdist.include = ["native/**", "tools/**", "tests/**"]
+sdist.exclude = ["**/__pycache__/**", "**/.pytest_cache/**"]
+
+[tool.cibuildwheel]
+build = "cp311-*"
+skip = "*-musllinux* *-win32 *-manylinux_i686"
+test-requires = ["pytest>=8"]
+test-command = "python -B -m pytest -p no:cacheprovider {project}/tests"
+build-verbosity = 1
+
+[tool.cibuildwheel.macos]
+archs = ["arm64", "x86_64"]
+
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_arm64"
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
+config-settings = { "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "11.0" }
+
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_x86_64"
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.15" }
+config-settings = { "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "10.15" }
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64", "aarch64"]
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
+environment = { CMAKE_GENERATOR = "Ninja", CC = "clang-cl", CXX = "clang-cl" }

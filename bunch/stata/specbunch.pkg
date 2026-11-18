@@ -1,0 +1,10 @@
+v 3
+d specbunch 0.1.0: spectral C ABI estimators
+f specbunch.ado
+f specbunch.sthlp
+f specbunch_macarm64.plugin
+f specbunch_macintel64.plugin
+f specbunch_linux64.plugin
+f specbunch_win64.plugin
+f specbunch_LLVM_LICENSE.sthlp
+f specbunch_HiGHS_LICENSE.sthlp

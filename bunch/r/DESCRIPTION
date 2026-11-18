@@ -1,0 +1,14 @@
+Package: specbunch
+Type: Package
+Title: Spectral Bunching Mass and Buncher Means
+Version: 0.1.0
+Authors@R: person("Dylan", "Moore", role = c("aut", "cre"), email = "dtmoore@hawaii.edu")
+Description: Thin interfaces to deterministic spectral estimators implemented
+    in a C++ core. Returns estimates, model-based standard errors, selection
+    diagnostics and every named core output for simulated or user supplied data.
+License: file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.2.0)
+Imports: graphics, stats
+SystemRequirements: C++20
+RoxygenNote: 7.3.3

@@ -1,0 +1,14 @@
+{
+  "macos_deployment.cmake": "91ab0c0c52b1cb82c415cbf05c45df868581b6d43ff2a43777b0aee8ae2af4ad",
+  "sb_common.h": "804702351a45ebd3c420d428acb87693feaeb7609d98c6650667d53a741f813d",
+  "sbc_internal.hpp": "e32f9e29503cd4800bebb74195154c73f90b291980bb40b1eba9ad2e6b816a74",
+  "sbc_threads.hpp": "a9103a3988e995a8899d0e5ef1564e3553560d618a83ff7f13c84879a24bd727",
+  "shim/noomp/omp.h": "9ca81a0a07e4351a57a5995094f91ff0dc4f28c1b2e139ccf37df1044c42fc9c",
+  "shim/portable/sys/resource.h": "3cb3415abd3e4e6e7bd14edf171e5c52acf5554ef6fa1c41f05debaf409a14cc",
+  "third_party/VENDOR.md": "ed3bc1d1aaaa5d534b05ff494e6906a68d7f6f32ac765e5ab549e6623b632ebf",
+  "third_party/apply_private_patch.cmake": "c9cf8bf7f8c485ed5159b0963a45096d9a1aca58a14f5525fc2bf974905cf8be",
+  "third_party/libomp-private-windows.patch": "d96c6b8cfde45fbe8ba17d54d42d90c2ab2bf8ef3a4b62f897e7ed0e68806de2",
+  "third_party/libomp-private.patch": "9adc53286524ac71d3f3ea05df2fae9ec4ee693f6b5776423783ddbbde8a986b",
+  "third_party/private_openmp.cmake": "a9edc8f7c0209b900b849e6d8aa1fb1f6efd6db17812127a69fede030aa44540",
+  "third_party/stata_spi.cmake": "4d222b3a7a1ab4bad84a95f9b9103d3be30dc3db08aded379d92628178560b45"
+}

@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+CXX=$("${R_HOME}/bin/R" CMD config CXX20)
+CXXSTD=$("${R_HOME}/bin/R" CMD config CXX20STD)
+printf '%s\n' 'int main() { return 0; }' > conftest.cpp
+fpflags=
+if $CXX $CXXSTD -ffp-contract=off -c conftest.cpp -o conftest.o >/dev/null 2>&1; then
+  fpflags=-ffp-contract=off
+else
+  echo 'Compiler does not support -ffp-contract=off; exact parity must be rechecked.'
+fi
+rm -f conftest.cpp conftest.o
+# R provides the OpenMP flags; never locate or link a private runtime.
+omp=$(sed -n 's/^SHLIB_OPENMP_CXXFLAGS *= *//p' "${R_HOME}/etc${R_ARCH}/Makeconf")
+noomp=
+if test -z "$omp"; then
+  noomp=-Icommon/shim/noomp
+  printf '%s\n' 'void probe(double *p) {' '#pragma omp simd' 'for (int i=0;i<16;i++) p[i] *= 2;' '}' > conftest.cpp
+  if $CXX $CXXSTD -fopenmp-simd -c conftest.cpp -o conftest.o >/dev/null 2>&1; then
+    fpflags="$fpflags -fopenmp-simd"
+  else
+    echo 'ERROR: R provides no full OpenMP flags and the compiler does not accept -fopenmp-simd. Installation cannot continue: results would not reproduce the reference without SIMD reductions.' >&2
+    rm -f conftest.cpp conftest.o
+    exit 1
+  fi
+  rm -f conftest.cpp conftest.o
+fi
+sed -e "s|@FPFLAGS@|$fpflags|g" -e "s|@NOOMP@|$noomp|g" src/Makevars.in > src/Makevars
+cp src/Makevars src/Makevars.win
+cat > src/r_build_config.h <<EOF
+#define SB_BUILD_FLAGS "R CXX20; $fpflags; OpenMP flags: $omp"
+#define SRD_BUILD_FLAGS "R CXX20; $fpflags; OpenMP flags: $omp"
+EOF

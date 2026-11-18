@@ -1,0 +1,177 @@
+name: Package QA
+'on':
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: packages-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      wheels: ${{ steps.matrix.outputs.wheels }}
+      native: ${{ steps.matrix.outputs.native }}
+    steps:
+      - id: matrix
+        shell: python
+        env:
+          FULL: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        run: |
+          import json, os
+          wheels = [{'os':'ubuntu-24.04','arch':'x86_64','stata':'linux64'}]
+          native = wheels.copy()
+          if os.environ['FULL'] == 'true':
+              extra = [{'os':'macos-15','arch':'arm64','stata':'macarm64'}, {'os':'macos-15-intel','arch':'x86_64','stata':'macintel64'}, {'os':'windows-2022','arch':'AMD64','stata':'win64'}]
+              wheels += extra + [{'os':'ubuntu-24.04-arm','arch':'aarch64','stata':''}]
+              native += extra
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              for name, rows in [('wheels',wheels),('native',native)]:
+                  print(name+'='+json.dumps({'include':rows}),file=f)
+  fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install numpy
+      - run: python -B tools/ci.py fixtures --root "$RUNNER_TEMP/spectral"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simulated-fixtures
+          path: ${{ runner.temp }}/spectral/xlang/fixtures
+          retention-days: 7
+  wheels:
+    needs: [plan, fixtures]
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.plan.outputs.wheels) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      CIBW_TEST_REQUIRES: pytest>=8 matplotlib>=3.5
+      CIBW_TEST_COMMAND: python -B -m pytest -p no:cacheprovider ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && '--runslow' || '' }} {project}/tests
+      CIBW_ARCHS: ${{ matrix.arch }}
+      PIP_CACHE_DIR: ${{ runner.temp }}/pip-cache
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with: {arch: x64}
+      - name: LLVM path
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH'
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/pip-cache
+          key: pip-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/pyproject.toml') }}
+      - run: python -m pip install cibuildwheel==3.2.1
+      - shell: bash
+        run: python -B tools/ci.py wheels --root "$RUNNER_TEMP/spectral"
+      - uses: actions/download-artifact@v4
+        with:
+          name: simulated-fixtures
+          path: ${{ runner.temp }}/spectral/xlang/fixtures
+      - shell: bash
+        run: python -B tools/ci.py wheel-test --root "$RUNNER_TEMP/spectral"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/spectral/py/dist/*.whl
+            ${{ runner.temp }}/spectral/py/xlang_*.json
+          retention-days: 7
+  r:
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.plan.outputs.native) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      R_KEEP_PKG_SOURCE: 'yes'
+      _R_CHECK_FORCE_SUGGESTS_: 'false'
+      _R_CHECK_CRAN_INCOMING_REMOTE_: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with: {use-public-rspm: true}
+      - name: Build and check specbunch outside checkout
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/r-check"
+          cd "$RUNNER_TEMP/r-check"
+          for family in bunch; do
+            R CMD build "$GITHUB_WORKSPACE/$family/r"
+          done
+          for tar in *.tar.gz; do
+            R CMD check --as-cran "$tar"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r-check-${{ matrix.os }}
+          path: ${{ runner.temp }}/r-check/*.Rcheck/00check.log
+          retention-days: 7
+  julia:
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.plan.outputs.native) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: julia-actions/setup-julia@v2
+        with: {version: '1.11'}
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with: {arch: x64}
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH'
+      - shell: bash
+        run: python -B tools/ci.py julia --root "$RUNNER_TEMP/spectral"
+  stata:
+    needs: [plan, fixtures]
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.plan.outputs.native) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with: {arch: x64}
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH'
+      - run: python -m pip install numpy
+      - uses: actions/download-artifact@v4
+        with:
+          name: simulated-fixtures
+          path: ${{ runner.temp }}/spectral/xlang/fixtures
+      - shell: bash
+        run: python -B tools/ci.py stata --root "$RUNNER_TEMP/spectral" --platform '${{ matrix.stata }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stata-${{ matrix.stata }}
+          path: |
+            ${{ runner.temp }}/spectral/stata/net
+            ${{ runner.temp }}/spectral/*-plugin.json
+          retention-days: 7

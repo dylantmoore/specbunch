@@ -1,0 +1,31 @@
+--- a/runtime/CMakeLists.txt
++++ b/runtime/CMakeLists.txt
+@@ -345,7 +345,7 @@
+   set(LIBOMP_ENABLE_SHARED FALSE)
+ endif()
+ 
+-if(WIN32 AND NOT LIBOMP_ENABLE_SHARED)
++if(WIN32 AND NOT LIBOMP_ENABLE_SHARED AND NOT SBC_LIBOMP_PRIVATE)
+   libomp_error_say("Static libraries requested but not available on Windows")
+ endif()
+ 
+--- a/runtime/src/CMakeLists.txt
++++ b/runtime/src/CMakeLists.txt
+@@ -297,6 +297,8 @@
+   set_property(SOURCE z_Windows_NT-586_asm.asm APPEND_STRING PROPERTY COMPILE_FLAGS " ${LIBOMP_MASM_DEFINITIONS}")
+   set_source_files_properties(thirdparty/ittnotify/ittnotify_static.cpp PROPERTIES COMPILE_DEFINITIONS "UNICODE")
+ 
++  # Private static archives need neither DLL exports nor import libraries.
++  if(LIBOMP_ENABLE_SHARED)
+   # Create Windows import library
+   # On debug LIBOMP_IMP_LIB_FILE should be LIBOMP_IMP_LIB_FILE_DBG = ${LIBOMP_DEFAULT_LIB_NAME_DBG}${CMAKE_STATIC_LIBRARY_SUFFIX}
+   # 									${LIBOMP_DEFAULT_LIB_NAME}d${CMAKE_STATIC_LIBRARY_SUFFIX}
+@@ -363,6 +365,8 @@
+   endif()
+ endif()
+ 
++endif() # Windows shared-library import/export machinery
++
+ # Building the Fortran module files
+ # One compilation step creates both omp_lib.mod and omp_lib_kinds.mod
+ configure_file(${LIBOMP_INC_DIR}/omp_lib.h.var omp_lib.h @ONLY)
