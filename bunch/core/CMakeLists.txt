@@ -32,7 +32,19 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 # Determinism and portability: no -march=native, no -ffast-math, no FMA contraction; the same flags in every config.
 set(CMAKE_CXX_FLAGS_RELEASE "")
-set(SB_FLAGS -O3 -ffp-contract=off -fno-fast-math -fvisibility=hidden -fvisibility-inlines-hidden)
+# clang-cl accepts GCC optimisation/FP options only through /clang:.
+if(MSVC)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(SB_FLAGS /clang:-O3 /DNDEBUG /clang:-ffp-contract=off /clang:-fno-fast-math)
+    set(_strict_fp_flag "/clang:-ffp-contract=off")
+  else()
+    set(SB_FLAGS /O2 /DNDEBUG /fp:strict)
+    set(_strict_fp_flag "/fp:strict")
+  endif()
+else()
+  set(SB_FLAGS -O3 -ffp-contract=off -fno-fast-math -fvisibility=hidden -fvisibility-inlines-hidden)
+  set(_strict_fp_flag "-ffp-contract=off")
+endif()
 
 set(COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../common)
 # HiGHS 1.8.0 is the pinned LP solver. Built static, minimal (library target only), PIC, hidden symbols, -ffp-contract=off, outside the repo.
@@ -63,7 +75,7 @@ ExternalProject_Add(highs_ext
   CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF -DFAST_BUILD=ON
              -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_BINDIR=bin
              -DZLIB=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_VISIBILITY_PRESET=hidden
-             -DCMAKE_VISIBILITY_INLINES_HIDDEN=ON "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} -ffp-contract=off"
+             -DCMAKE_VISIBILITY_INLINES_HIDDEN=ON "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} ${_strict_fp_flag}"
              -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
              -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
              -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}

@@ -10,7 +10,7 @@ def run(*args,**kw):subprocess.run(list(map(str,args)),check=True,**kw)
 def lib(name):return ('' if os.name=='nt' else 'lib')+name+('.dll' if os.name=='nt' else '.dylib' if sys.platform=='darwin' else '.so')
 def build(src,dest,*opts):
     run('cmake','-S',r/src,'-B',dest,'-DCMAKE_BUILD_TYPE=Release',*opts)
-    run('cmake','--build',dest,'--config','Release','--parallel','3')
+    run('cmake','--build',dest,'--config','Release','--parallel','3',*(['--verbose'] if os.name=='nt' else []))
 run(sys.executable, '-B', r/'tools/check_common.py')
 families=[a.family] if a.family else ['bunch']
 if a.job in ('cores','fixtures'):

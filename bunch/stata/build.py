@@ -15,7 +15,7 @@ if a.platform.startswith('mac'):
  arch='arm64' if a.platform=='macarm64' else 'x86_64'
  args+=['-DCMAKE_OSX_ARCHITECTURES='+arch,'-DCMAKE_OSX_DEPLOYMENT_TARGET='+('11.0' if arch=='arm64' else '10.15'),'-DSBC_PRIVATE_OPENMP=ON']
 subprocess.run(args,check=True,env=env)
-subprocess.run(['cmake','--build',str(b),'--target','stata_plugin','--parallel','2'],check=True,env=env)
+subprocess.run(['cmake','--build',str(b),'--target','stata_plugin','--parallel','2',*(['--verbose'] if os.name=='nt' else [])],check=True,env=env)
 stage=a.build_root/'net'/pkg; stage.mkdir(parents=True,exist_ok=True)
 for f in src.iterdir():
  if f.suffix in ['.ado','.sthlp','.pkg','.toc']: shutil.copy2(f,stage/f.name)

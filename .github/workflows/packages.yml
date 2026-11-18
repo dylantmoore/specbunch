@@ -3,6 +3,12 @@ name: Package QA
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      platforms:
+        description: Test platform subset (fixtures still use the Linux oracle)
+        type: choice
+        options: [all, windows]
+        default: all
 permissions:
   contents: read
 concurrency:
@@ -18,6 +24,7 @@ jobs:
       - id: matrix
         shell: python
         env:
+          PLATFORMS: ${{ inputs.platforms || 'all' }}
           FULL: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         run: |
           import json, os
@@ -27,6 +34,9 @@ jobs:
               extra = [{'os':'macos-15','arch':'arm64','stata':'macarm64'}, {'os':'macos-15-intel','arch':'x86_64','stata':'macintel64'}, {'os':'windows-2022','arch':'AMD64','stata':'win64'}]
               wheels += extra + [{'os':'ubuntu-24.04-arm','arch':'aarch64','stata':''}]
               native += extra
+          if os.environ['PLATFORMS'] == 'windows':
+              wheels = [x for x in wheels if x['os'] == 'windows-2022']
+              native = [x for x in native if x['os'] == 'windows-2022']
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               for name, rows in [('wheels',wheels),('native',native)]:
                   print(name+'='+json.dumps({'include':rows}),file=f)
