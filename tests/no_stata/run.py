@@ -5,7 +5,7 @@ import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'xlang'))
 from fixtures import read_json, load_arrays, encode
 from raw_ctypes import POLICIES
-from compare import compare
+from compare import compare, CrossReport
 p=argparse.ArgumentParser()
 p.add_argument('--host',type=Path,required=True);p.add_argument('--plugin',type=Path,required=True)
 p.add_argument('--fixtures',type=Path,required=True);p.add_argument('--family',choices=['bunch','rd'],required=True)
@@ -24,6 +24,7 @@ def call(*args):
 
 def macro(k):return h.host_macro(('_'+k).encode()).decode()
 def numbers(k):return [struct.unpack('>d',bytes.fromhex(b))[0] for b in macro(k).split()]
+report = CrossReport((a.output.parent if a.output else a.fixtures.parent.parent)/'cross-os/stata') if not a.exact else None
 total=dict(cases=0,calls=0,compared=0,bitwise=0,maxrel=0.0)
 for case in read_json(a.fixtures/'manifest.json.gz')['cases']:
     if a.case and case['id']!=a.case:continue
@@ -58,7 +59,7 @@ for case in read_json(a.fixtures/'manifest.json.gz')['cases']:
         observed=raw.pop('threads_used')
         assert observed == t if t else observed >= 1
         actual=encode(int(macro('core_status')),raw)
-        stats=compare(actual,case['expected'],exact=a.exact)
+        stats=compare(actual,case['expected'],exact=a.exact,report=report,fixture=case['id'])
         if first_actual is not None:compare(actual,first_actual,exact=True)
         else:first_actual=actual
         for k in ('compared','bitwise'):total[k]+=stats[k]
@@ -66,5 +67,6 @@ for case in read_json(a.fixtures/'manifest.json.gz')['cases']:
         call('release')
     total['cases']+=1;print(case['id'],'PASS',flush=True)
 assert total['cases'] > 0, 'No matching fixtures'
+if report is not None: report.assert_pass()
 total['result']='PASS';print(json.dumps(total))
 if a.output:a.output.write_text(json.dumps(total,indent=2)+'\n')

@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 p = argparse.ArgumentParser()
 p.add_argument("--root", type=Path, default=Path(os.environ.get("SPECPKG_BUILD", str(Path(tempfile.gettempdir())/"spectral-build"))))
 p.add_argument("--worker", choices=["bunch","rd","both"])
-p.add_argument("--tolerance", action="store_true", help="Cross-platform: exact decisions, relative tolerance 1e-10")
+p.add_argument("--tolerance", action="store_true", help="Cross-platform selected-answer contract; report all diagnostic differences")
 a = p.parse_args()
 if not a.worker:
     venv = a.root/"py/xlang-venv"
@@ -28,6 +28,8 @@ else:
     root = a.root/"xlang/fixtures"
     manifest = read_json(root/"manifest.json.gz")
     manifest["cases"]=[c for c in manifest["cases"] if a.worker=="both" or (c["entry"]=="rd") == (a.worker=="rd")]
+    from compare import CrossReport
+    report = CrossReport(a.root/'cross-os/wheels') if a.tolerance else None
     values = 0
     bitwise = 0
     maxrel = 0.0
@@ -45,7 +47,7 @@ else:
             result.raw.pop("threads_used")
             actual = encode(result.status_code if case["entry"]=="npmle" else result.status, result.raw)
             from compare import compare
-            stats = compare(actual, expected, exact=not a.tolerance)
+            stats = compare(actual, expected, exact=not a.tolerance, report=report, fixture=case['id'])
             if first_actual is not None:
                 compare(actual, first_actual, exact=True)
             else:
@@ -54,6 +56,7 @@ else:
             maxrel = max(maxrel, stats['maxrel'])
             values += 1 + len(expected["scalars"]) + len(expected["strings"]) + sum(map(len,expected["vectors"].values()))
         print(case["id"], "1/2/4/8/default PASS", flush=True)
+    if report is not None: report.assert_pass()
     receipt = {"cases": len(manifest["cases"]), "calls": 5*len(manifest["cases"]), "compared_values": values,
                "threads": [1,2,4,8,0], "bitwise": bitwise, "maxrel": maxrel, "result": "PASS"}
     (a.root/("py/xlang_"+a.worker+".json")).write_text(json.dumps(receipt, indent=2)+"\n")

@@ -106,7 +106,7 @@ BIC is `−2 loglik + edf log(n_eff)`, with `edf = tr((F'WF + P)^{-1} F'WF)`, us
 | refinement_points | Number of penalty values used to refine an interior minimum, default 9. |
 | histogram_width | Positive likelihood-bin width in z units; null uses max(sigma,a)/20. |
 | quadrature_tolerance | Target absolute error in a CDF or in max(sigma,a) times a PDF for each Voigt kernel evaluation, default 1e-9. |
-| optimality_tolerance | Maximum normalized simplex KKT residual accepted as converged, default 1e-7. |
+| optimality_tolerance | Target normalized simplex KKT residual during iteration, default 1e-7; final acceptance allows ten times this target (1e-6 by default) to tolerate line-search roundoff without changing the iteration path. |
 
 The central spline support reaches the .5% and 99.5% sample quantiles, with at least four friction scales on each side. Additional knots double their spacing until the support extends beyond every observation by at least four friction scales. This uses quantiles to place knots, not to discard data. Output histogram bins have central width approximately max(sigma,a)/4, with at most 4000 central intervals and widening tail bins; user bins replace only this output grid. Curves include both the point immediately below the kink and the kink itself when it lies within the sample range, so the latent CDF's atom jump is represented explicitly.
 
@@ -159,3 +159,25 @@ Julia defaults to `plot=:both`; `:pdf` and `:cdf` select one view and `false` or
 Stata draws by default with `specbunch npmle, plot(both)`; `plot(pdf)` or `plot(cdf)` selects one view and `noplot` suppresses it. `name(name[, replace])` and `saving(filename[, replace])` apply to the final graph. Weights are inherited from the mass estimation sample, rather than supplied again.
 
 Density plots compare histogram density, fitted observed density and latent smooth density excluding the atom; CDF plots compare empirical, fitted observed and latent CDFs, including the latent atom jump. The display uses the central 0.1%–99.9% empirical range, expanded to include the kink; this does not restrict estimation or the returned full-range curves.
+
+## Reproducibility contract
+
+On the same platform and build, results are bitwise identical at any thread count.
+Across operating systems, the selected answer agrees on the test fixtures within
+relative tolerance 1e-8 (absolute tolerance 1e-12 near zero). Status, refusal reason,
+tier, flags, and selected window endpoints must agree exactly; the numerical
+comparison covers selected B, sigma, mu (buncher mean), and tau (regression discontinuity),
+where applicable. The tolerance is max(1e-12, 1e-8 * max(abs(actual), abs(reference))).
+
+System math libraries differ in the last bit. Diagnostics such as fit p-values and
+window ranks can differ slightly, and a sample on a knife edge between two windows
+can select a different window. Report the platform with published results.
+
+CI keeps same-platform thread comparisons strictly bitwise. Cross-platform wheel
+and Stata-harness jobs fail only for the selected-answer differences above. All
+other differences, including candidate-table lengths and unselected windows, are
+reported in the job summary and a compressed JSON-lines artifact with every field,
+fixture, actual/reference value, and relative difference. Selected-answer fixture
+flips are counted explicitly. NPMLE curves have a looser reporting tolerance of
+relative 1e-6 or absolute 1e-8 (the larger allowance); exceeding it is reported,
+not a cross-platform failure. These tolerances do not change estimator numerics.

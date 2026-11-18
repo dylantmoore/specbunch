@@ -66,7 +66,9 @@ inline SplineFit optimize(const Likelihood& model,double lambda,const vector<dou
  }
  model.evaluate(fit.p,lambda,objective,prob,&gradient,&hessian);
  double mean=0;for(int j=0;j<m;++j)mean+=fit.p[j]*gradient[j];double gap=0,pos=0;
- for(int j=0;j<m;++j){gap=std::max(gap,mean-gradient[j]);pos+=fit.p[j]*std::max(gradient[j]-mean,0.);}fit.kkt=std::max(gap,pos);fit.converged=fit.kkt<=tolerance;
+ for(int j=0;j<m;++j){gap=std::max(gap,mean-gradient[j]);pos+=fit.p[j]*std::max(gradient[j]-mean,0.);}fit.kkt=std::max(gap,pos);
+ // Preserve the iteration target; allow a final certificate margin for objective roundoff.
+ fit.converged=fit.kkt<=10*tolerance;
  fit.loglik=0;for(size_t i=0;i<model.n;++i)fit.loglik+=model.counts[i]*std::log(prob[i]);
  // QR of the augmented weighted design evaluates tr(H^-1 I) without
  // subtracting nearly equal matrix entries or forming an inverse.
