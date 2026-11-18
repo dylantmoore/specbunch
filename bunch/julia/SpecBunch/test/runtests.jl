@@ -61,6 +61,9 @@ end
     fit=mass(z;threads=1,npmle=true)
     @test !fit.refused && fit.npmle isa NpmleResult
     result=npmle(fit,z;threads=1,grid_points=101,lambda_points=5,refinement_points=3)
+    if result.status != "converged"
+        @info "NPMLE convergence diagnostics" B=fit.B sigma=fit.sigma diagnostics=Dict(k=>result.raw[k] for k in ("lambda","kkt","iterations","lambda_path.lambda","lambda_path.kkt"))
+    end
     @test result.status=="converged"
     @test result.curves isa NamedTuple && result.histogram isa NamedTuple
     @test all(result.coefficients .>=0)

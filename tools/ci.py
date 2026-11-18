@@ -20,7 +20,7 @@ elif a.job=='wheels':
     for f in families:
         name='specbunch' if f=='bunch' else 'specrd'
         run(sys.executable,'-B',r/f/'python/tools/build.py','--stage-only','--root',b)
-        run(sys.executable,'-m','cibuildwheel',b/'py/stage'/name,'--output-dir',b/'py/dist')
+        run(sys.executable,'-m','cibuildwheel','.', '--output-dir',b/'py/dist',cwd=b/'py/stage'/name)
 elif a.job=='wheel-test':
     run(sys.executable,'-m','pip','install',*sorted((b/'py/dist').glob('*.whl')),'pytest')
     (b/'py').mkdir(exist_ok=True)

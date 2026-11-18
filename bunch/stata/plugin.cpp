@@ -37,10 +37,11 @@ static void publish(Result* r) {
   local("core_status",std::to_string(sb_result_status(r)));
   for(int kind=0;kind<3;++kind) { std::string list; int index=0; for(auto& k:names(sb_result_names(r,kind))) { alias(k); list+=k+" "; if(kind==1) { size_t n=0; sb_result_vector(r,k.c_str(),&n); local("len"+std::to_string(++index),std::to_string(n)); } if(kind==2) local("str"+std::to_string(++index),sb_result_string(r,k.c_str())); } local(kind==0?"scalar_names":kind==1?"vector_names":"string_names",list); }
 }
+STDLL
 #if !defined(_WIN32)
 __attribute__((visibility("default")))
 #endif
-STDLL stata_call(int argc, char* argv[]) {
+stata_call(int argc, char* argv[]) {
  try {
   if(argc<1) throw std::runtime_error("Missing plugin operation");
   std::string op=argv[0];

@@ -25,8 +25,17 @@
 
 namespace sbc {
 inline int positive_env_threads() {
+#if defined(_WIN32)
+  // Read the process environment, not a C runtime's potentially stale copy.
+  // Julia and other hosts may update it through the Windows API.
+  char buffer[32767];
+  DWORD length = GetEnvironmentVariableA("OMP_NUM_THREADS", buffer, sizeof(buffer));
+  if (!length || length >= sizeof(buffer)) return 0;
+  const char* value = buffer;
+#else
   const char* value = std::getenv("OMP_NUM_THREADS");
   if (!value) return 0;
+#endif
   char* end = nullptr;
   errno = 0;
   long n = std::strtol(value, &end, 10);
@@ -108,6 +117,16 @@ inline int linux_threads(int fallback) {
   return std::max(1,std::min(cores ? cores : fallback,cap));
 }
 #endif
+// Older Windows SDKs omit this member; count physical cores equally there.
+#if defined(_WIN32)
+template<class Processor>
+inline int efficiency_class(const Processor& processor) {
+  if constexpr (requires { processor.EfficiencyClass; })
+    return processor.EfficiencyClass;
+  else
+    return 0;
+}
+#endif
 inline int detected_threads() {
   int fallback=static_cast<int>(std::thread::hardware_concurrency());
   fallback=std::max(1,fallback);
@@ -145,7 +164,7 @@ inline int detected_threads() {
       auto* info=reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(storage.data()+offset);
       if(!info->Size || offset+info->Size>bytes) break;
       if(info->Relationship==RelationProcessorCore) {
-        int efficiency=info->Processor.EfficiencyClass;
+        int efficiency=efficiency_class(info->Processor);
         if(efficiency>best) { best=efficiency; cores=0; }
         if(efficiency==best) ++cores;
       }
