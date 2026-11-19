@@ -21,8 +21,19 @@ if stage.exists():
     shutil.rmtree(stage)
 shutil.copytree(src, stage, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache", "native", "dist", "build"))
 packages = src.parents[1]
+# Read legal files explicitly: macOS File Provider fast-copy can copy an
+# unhydrated placeholder as an empty file. Never ship empty licence texts.
+for rel in [Path(x) for x in ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "CITATION.cff")] + [Path("licenses")/x.name for x in (packages/"licenses").iterdir()]:
+    data=(packages/rel).read_bytes()
+    if not data: raise SystemExit("Empty legal file: "+str(rel))
+    (stage/rel).parent.mkdir(parents=True,exist_ok=True)
+    (stage/rel).write_bytes(data)
+
 shutil.copytree(packages/part/"core", stage/"native"/part/"core")
 shutil.copytree(packages/"common", stage/"native/common")
+subprocess.run([sys.executable, "-B", str(packages/"tools/source_archive.py"),
+                "--repo", str(packages), "--output", str(stage/"src/specbunch/licenses/corresponding-source.tar.gz"),
+                "--cache", str(root/"source-cache")], check=True)
 print(stage, flush=True)
 if not a.stage_only:
     env = dict(os.environ, UV_CACHE_DIR=str(root/"uvcache"), PYTHONDONTWRITEBYTECODE="1", CMAKE_BUILD_PARALLEL_LEVEL="4")

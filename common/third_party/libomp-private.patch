@@ -5,7 +5,7 @@
  
  void __kmp_register_library_startup(void) {
 +#if defined(SBC_LIBOMP_PRIVATE)
-+  // This static runtime is hidden inside one spectral C-ABI library. No OpenMP
++  // Modified for specbunch/specrd: private static runtime. No OpenMP
 +  // objects cross that boundary. Do not register/check a foreign runtime's
 +  // __KMP_REGISTERED_LIB_<pid> slot, and never set KMP_DUPLICATE_LIB_OK.
 +#if KMP_ARCH_X86 || KMP_ARCH_X86_64

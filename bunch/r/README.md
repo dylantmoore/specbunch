@@ -11,7 +11,7 @@ install.packages("remotes")
 remotes::install_github("dylantmoore/specbunch", subdir = "bunch/r")
 ```
 
-Pre-release research software: read [Status and testing](https://github.com/dylantmoore/specbunch#status-and-testing) before relying on it. Cite: Moore, Dylan (2026). "Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs." Working paper.
+Pre-release research software: read [Status and testing](https://github.com/dylantmoore/specbunch#status-and-testing) before relying on it. Cite: Moore, Dylan (2026). "An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution." Working paper.
 
 Methods: `cosine` (default), `joint`. Friction: `gaussian` (default), `voigt`. Window rules: `tiered` (default), `first`. Every fit returns ranked sensitivity tables; coherent estimates carry diagnostic flags.
 
@@ -28,3 +28,10 @@ By default `npmle` draws two views of the fit next to the data. The density view
 `mass(..., plot=TRUE)` follows the same rules for the transform fit: the empirical cosine transform with a ±2 SE band, the fitted curve over the whole grid and the shaded selected window (joint fits add a t·S(t) panel), on scaled frequency t·σ_pilot. `plot="raw"` uses raw t and `plot=FALSE` skips it; `plot(result, frequency="raw")` redraws. With `npmle=TRUE`, interactive sessions draw the transform fit and then the NPMLE plot.
 
 Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.
+
+## Licence and citing
+
+Our code is MIT licensed, Copyright (c) 2026 Dylan Moore. Third-party components
+retain their own licences; see THIRD_PARTY_NOTICES.md and the supplied licence texts.
+Please cite Moore, Dylan (2026). *An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution*. Working paper.
+This paper title is a placeholder and will be updated. See CITATION.cff.

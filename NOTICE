@@ -1,0 +1,9 @@
+LLVM OpenMP 21.1.8: Copyright LLVM Project contributors.
+This distribution uses a MODIFIED copy, not the upstream runtime.
+libomp-private.patch disables duplicate-runtime process registration and cleanup
+under SBC_LIBOMP_PRIVATE, retaining x86 system-tick initialization.
+libomp-private-windows.patch permits a private static Windows build and disables
+DLL import-library/export-file generation for that static archive.
+Both exact patches accompany this notice. Runtime symbols are private; OMPT,
+OMPD, ITT and offloading are disabled. Upstream copyright headers are retained.
+LLVM OpenMP is licensed under Apache-2.0 WITH LLVM-exception; see LLVM-OpenMP.txt.

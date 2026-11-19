@@ -3,6 +3,16 @@ using Pkg, UUIDs, Libdl, TOML
 using Pkg.Artifacts
 B = get(ENV,"SB_JULIA_BUILD",joinpath(get(ENV,"SPECPKG_BUILD",joinpath(tempdir(),"spectral-build")),"julia"))
 R = normpath(joinpath(@__DIR__,"../../.."))
+# Explicit reads also work for unhydrated macOS File Provider source files.
+function install_legal(dir)
+    mkpath(joinpath(dir,"licenses"))
+    for file in ("LICENSE","NOTICE","THIRD_PARTY_NOTICES.md","CITATION.cff")
+        write(joinpath(dir,file),read(joinpath(R,file)))
+    end
+    for file in readdir(joinpath(R,"licenses"))
+        write(joinpath(dir,"licenses",file),read(joinpath(R,"licenses",file)))
+    end
+end
 specs = Pkg.PackageSpec[]
 names = String[]
 overrides = Dict{String,Any}()
@@ -13,10 +23,15 @@ for (family,name,uuid) in [
     dest=joinpath(B,"packages",name)
     isdir(dest) && rm(dest;recursive=true)
     mkpath(dirname(dest)); cp(joinpath(R,family,"julia",name),dest)
+    install_legal(dest)
     libname=(Sys.iswindows() ? "" : "lib")*lowercase(name)*"."*Libdl.dlext
     lib=joinpath(B,"build",family,libname)
     isfile(lib) || error("build core first: $lib")
     hash=create_artifact() do dir
+        notices=joinpath(dir,"share","licenses",lowercase(name)); mkpath(notices)
+        install_legal(notices)
+        python=get(ENV,"PYTHON","python")
+        run(`$python -B $(joinpath(R,"tools/source_archive.py")) --repo $R --output $(joinpath(notices,"corresponding-source.tar.gz")) --cache $(joinpath(B,"source-cache"))`)
         mkpath(joinpath(dir,"lib")); cp(lib,joinpath(dir,"lib",libname))
     end
     overrides[string(hash)]=artifact_path(hash)

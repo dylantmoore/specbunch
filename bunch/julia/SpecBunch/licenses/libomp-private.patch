@@ -1,0 +1,29 @@
+--- a/runtime/src/kmp_runtime.cpp
++++ b/runtime/src/kmp_runtime.cpp
+@@ -6750,6 +6750,15 @@
+ #endif
+ 
+ void __kmp_register_library_startup(void) {
++#if defined(SBC_LIBOMP_PRIVATE)
++  // Modified for specbunch/specrd: private static runtime. No OpenMP
++  // objects cross that boundary. Do not register/check a foreign runtime's
++  // __KMP_REGISTERED_LIB_<pid> slot, and never set KMP_DUPLICATE_LIB_OK.
++#if KMP_ARCH_X86 || KMP_ARCH_X86_64
++  __kmp_initialize_system_tick(); // Preserve registration's non-registry work.
++#endif
++  return;
++#endif
+ 
+   char *name = __kmp_reg_status_name(); // Name of the environment variable.
+   int done = 0;
+@@ -6964,6 +6973,10 @@
+ } // func __kmp_register_library_startup
+ 
+ void __kmp_unregister_library(void) {
++#if defined(SBC_LIBOMP_PRIVATE)
++  // We never registered: in particular, do not remove another runtime's slot.
++  return;
++#endif
+ 
+   char *name = __kmp_reg_status_name();
+   char *value = NULL;

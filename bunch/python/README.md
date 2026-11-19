@@ -10,7 +10,7 @@ Nothing is on PyPI yet; this builds the C++20 core from source (macOS: Xcode Com
 python -m pip install "specbunch[plot] @ git+https://github.com/dylantmoore/specbunch#subdirectory=bunch/python"
 ```
 
-The `[plot]` extra adds matplotlib. Prebuilt wheels are planned. Pre-release research software: read [Status and testing](https://github.com/dylantmoore/specbunch#status-and-testing) before relying on it. Cite: Moore, Dylan (2026). "Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs." Working paper.
+The `[plot]` extra adds matplotlib. Prebuilt wheels are planned. Pre-release research software: read [Status and testing](https://github.com/dylantmoore/specbunch#status-and-testing) before relying on it. Cite: Moore, Dylan (2026). "An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution." Working paper.
 
 Methods: `cosine` (default), `joint`. Friction: `gaussian` (default), `voigt`. Window rules: `tiered` (default), `first`. Every fit returns ranked sensitivity tables; coherent estimates carry diagnostic flags.
 
@@ -31,3 +31,10 @@ Run local tests with `python -m pytest tests`; expensive checks marked `slow` ar
 Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.
 
 Postestimation also provides `nonbuncher_mean` (a local characteristic mean with the buncher mean fixed) and ETI by the Saez trapezoid with continuous completion. See the public reference for language-specific syntax, conditional SE interpretation and flags.
+
+## Licence and citing
+
+Our code is MIT licensed, Copyright (c) 2026 Dylan Moore. Third-party components
+retain their own licences; see THIRD_PARTY_NOTICES.md and the supplied licence texts.
+Please cite Moore, Dylan (2026). *An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution*. Working paper.
+This paper title is a placeholder and will be updated. See CITATION.cff.

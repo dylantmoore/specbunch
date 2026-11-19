@@ -77,3 +77,7 @@ sets Simpson intervals below the mass window; {cmd:threads(0)} controls
 fixed-chunk execution. Structural interpretation requires homogeneous
 isoelastic shifting and the supplied marginal incentives; the shoulders are
 finite-resolution functionals. Report Gaussian/Voigt results and mass-fit flags.
+
+{title:Licence and citing}
+{pstd}Own code: MIT, Copyright (c) 2026 Dylan Moore. See specbunch_THIRD_PARTY_NOTICES.txt and supplied licences.
+{pstd}Please cite Moore, Dylan (2026). An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution. Working paper. This title is a placeholder to be updated.

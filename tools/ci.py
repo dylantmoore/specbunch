@@ -24,6 +24,7 @@ elif a.job=='wheels':
         name='specbunch' if f=='bunch' else 'specrd'
         run(sys.executable,'-B',r/f/'python/tools/build.py','--stage-only','--root',b)
         run(sys.executable,'-m','cibuildwheel','.', '--output-dir',b/'py/dist',cwd=b/'py/stage'/name)
+        for wheel in (b/'py/dist').glob('*.whl'):run(sys.executable,'-B',r/'tools/check_licenses.py','--wheel',wheel)
 elif a.job=='wheel-test':
     run(sys.executable,'-m','pip','install',*sorted((b/'py/dist').glob('*.whl')),'pytest')
     (b/'py').mkdir(exist_ok=True)
@@ -40,6 +41,7 @@ elif a.job=='stata':
     for f in families:
         name='specbunch' if f=='bunch' else 'specrd'
         run(sys.executable,'-B',r/f/'stata/build.py','--platform',a.platform,'--build-root',b/'stata')
+        run(sys.executable,'-B',r/'tools/check_licenses.py','--stata',b/'stata/net'/name)
         run(sys.executable,'-B',r/'tests/no_stata/run.py','--host',b/'host'/lib('stata_host'),
             '--plugin',b/'stata'/name/a.platform/'core'/(name+'_'+a.platform+'.plugin'),
             '--fixtures',b/'xlang/fixtures','--family',f,'--output',b/(name+'-plugin.json'))

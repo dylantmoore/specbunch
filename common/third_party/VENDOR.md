@@ -23,7 +23,7 @@ never cross that boundary. No package changes `KMP_DUPLICATE_LIB_OK`.
 ## Patches
 
 - `libomp-private.patch`, SHA-256
-  `9adc53286524ac71d3f3ea05df2fae9ec4ee693f6b5776423783ddbbde8a986b`:
+  `af32bde385542c6b56a852c1a42382d26610c2d709923f857c098636ed125f3c`:
   under `SBC_LIBOMP_PRIVATE`, return from `__kmp_register_library_startup` and
   `__kmp_unregister_library`. Retain startup's x86 system-tick initialization.
   This disables only this copy's duplicate-runtime registration/check/cleanup,
@@ -31,7 +31,7 @@ never cross that boundary. No package changes `KMP_DUPLICATE_LIB_OK`.
   temp-file mechanism. Without it even hidden static copies abort with Error #15.
   Ordinary OpenMP scheduling, team formation and thread controls are unchanged.
 - `libomp-private-windows.patch`, SHA-256
-  `d96c6b8cfde45fbe8ba17d54d42d90c2ab2bf8ef3a4b62f897e7ed0e68806de2`:
+  `fd4e867bfd877334a8a35d7dfa62a4e8b622e29d44587b3ef4b766c0f9bef4eb`:
   allow a private static Windows build through the upstream CMake shared-only
   guard, and skip DLL import-library/export-file generation for static archives.
   Preserve MASM and resource setup; the parent CMake passes the static archive

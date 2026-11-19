@@ -136,17 +136,21 @@ The mass estimator is weighted nonlinear least squares of the empirical cosine t
 
 Postestimation also provides `nonbuncher_mean` (a local characteristic mean with the buncher mean fixed) and ETI by the Saez trapezoid with continuous completion. See [docs/REFERENCE.md](docs/REFERENCE.md) for language-specific syntax, conditional SE interpretation and flags, and the `VENDOR.md` files for source provenance. Build artifacts must be placed outside the source tree.
 
-## Citation
+## Licence and citing
 
+Our code is MIT licensed, Copyright (c) 2026 Dylan Moore. Third-party components
+retain their own licences; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 If you use `specbunch`, please cite:
 
-> Moore, Dylan (2026). "Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs." Working paper.
+> Moore, Dylan (2026). *An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution*. Working paper.
+
+This paper title is a placeholder and will be updated. See [CITATION.cff](CITATION.cff).
 
 ```bibtex
 @unpublished{moore2026spectral,
   author = {Moore, Dylan},
-  title  = {Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs},
-  note   = {Working paper},
+  title  = {An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution},
+  note   = {Working paper; placeholder title to be updated},
   year   = {2026}
 }
 ```

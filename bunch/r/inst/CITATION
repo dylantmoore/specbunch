@@ -1,0 +1,5 @@
+citHeader("Please cite this working paper. The title is a placeholder to be updated.")
+bibentry(bibtype = "Unpublished",
+  title = "An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution",
+  author = person("Dylan", "Moore"), year = "2026",
+  note = "Working paper. Placeholder title; update when final.")

@@ -9,7 +9,9 @@ description = "Spectral bunching mass and buncher mean estimators"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.23"]
-authors = [{name = "D. Moore"}]
+authors = [{name = "Dylan Moore"}]
+license = "MIT"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "licenses/*"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
@@ -42,6 +44,7 @@ environment = { MACOSX_DEPLOYMENT_TARGET = "10.15" }
 config-settings = { "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "10.15" }
 
 [tool.cibuildwheel.linux]
+before-build = "python {project}/tools/runtime_sources.py"
 archs = ["x86_64", "aarch64"]
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"

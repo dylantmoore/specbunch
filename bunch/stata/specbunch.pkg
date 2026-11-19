@@ -1,4 +1,5 @@
 v 3
+d Own code: MIT, Copyright (c) 2026 Dylan Moore
 d specbunch 0.1.0: spectral C ABI estimators
 f specbunch.ado
 f specbunch.sthlp
@@ -8,3 +9,29 @@ f specbunch_linux64.plugin
 f specbunch_win64.plugin
 f specbunch_LLVM_LICENSE.sthlp
 f specbunch_HiGHS_LICENSE.sthlp
+f specbunch_LICENSE.txt
+f specbunch_NOTICE.txt
+f specbunch_THIRD_PARTY_NOTICES.txt
+f specbunch_CITATION.txt
+f specbunch_BASICLU.txt
+f specbunch_Boost-1.0.txt
+f specbunch_CSparse-provenance.txt
+f specbunch_CSparse.txt
+f specbunch_GCC-Runtime-Exception.txt
+f specbunch_GPL-3.0.txt
+f specbunch_HiGHS.txt
+f specbunch_IPX.txt
+f specbunch_LGPL-2.1.txt
+f specbunch_LLVM-OpenMP.txt
+f specbunch_cuPDLP-provenance.txt
+f specbunch_cuPDLP.txt
+f specbunch_filereaderlp.txt
+f specbunch_libomp-private-windows.txt
+f specbunch_libomp-private.txt
+f specbunch_pdqsort.txt
+f specbunch_zstr.txt
+f specbunch_source.tar.gz
+f specbunch_Intel-ITT.txt
+f specbunch_Microsoft-STL.txt
+f specbunch_LLVM-Compiler-RT.txt
+f specbunch_LLVM-libcxx.txt

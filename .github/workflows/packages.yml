@@ -47,6 +47,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
+      - run: python -B tools/check_licenses.py
+      - run: python -B tools/test_runtime_sources.py
       - run: python -B tests/xlang/test_compare.py
       - run: c++ -std=c++20 tests/npmle/test_certificate.cpp -o "$RUNNER_TEMP/test-certificate" && "$RUNNER_TEMP/test-certificate"
       - run: python -m pip install numpy

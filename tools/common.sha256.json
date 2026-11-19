@@ -5,10 +5,10 @@
   "sbc_threads.hpp": "ed6917a376b6d9aa5052b3e017e5c24d76d7ee8725aaad3c0c59116c97549fe8",
   "shim/noomp/omp.h": "9ca81a0a07e4351a57a5995094f91ff0dc4f28c1b2e139ccf37df1044c42fc9c",
   "shim/portable/sys/resource.h": "3cb3415abd3e4e6e7bd14edf171e5c52acf5554ef6fa1c41f05debaf409a14cc",
-  "third_party/VENDOR.md": "45fa876856b4192607033ee8ed226142b98c1d7229cfe6fc3b164a62c4e2f641",
+  "third_party/VENDOR.md": "61e46ec87d191d71ebd305caa118ad30bda05ccca5a6a1bddfee3a71b873d0db",
   "third_party/apply_private_patch.cmake": "c9cf8bf7f8c485ed5159b0963a45096d9a1aca58a14f5525fc2bf974905cf8be",
-  "third_party/libomp-private-windows.patch": "d96c6b8cfde45fbe8ba17d54d42d90c2ab2bf8ef3a4b62f897e7ed0e68806de2",
-  "third_party/libomp-private.patch": "9adc53286524ac71d3f3ea05df2fae9ec4ee693f6b5776423783ddbbde8a986b",
+  "third_party/libomp-private-windows.patch": "fd4e867bfd877334a8a35d7dfa62a4e8b622e29d44587b3ef4b766c0f9bef4eb",
+  "third_party/libomp-private.patch": "af32bde385542c6b56a852c1a42382d26610c2d709923f857c098636ed125f3c",
   "third_party/private_openmp.cmake": "cf5735072cf3a57caaa9b18ae746c7f62f87790e3e58172ea938031ba4dbb557",
   "third_party/stata_spi.cmake": "4d222b3a7a1ab4bad84a95f9b9103d3be30dc3db08aded379d92628178560b45"
 }

@@ -57,4 +57,6 @@ Options: `method` is `cosine` (default; cosine transform only) or `joint` (also 
 
 ## Citation
 
-Moore, Dylan (2026). "Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs." Working paper.
+Moore, Dylan (2026). "An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution." Working paper.
+
+The paper title is a placeholder and will be updated; see CITATION.cff.
