@@ -73,3 +73,25 @@ def test_default_plot_and_opt_out(monkeypatch):
     monkeypatch.setitem(__import__("sys").modules,"matplotlib",None)
     with pytest.warns(UserWarning,match="matplotlib"):missing=sb.npmle(fit,z,**small)
     assert missing.figure is None and missing.status=="converged"
+
+
+def test_mass_transform_plot(monkeypatch):
+    pytest.importorskip("matplotlib")
+    from matplotlib.figure import Figure
+    z=sample(800)
+    fit=sb.mass(z,threads=1)
+    assert isinstance(fit.figure,Figure) and len(fit.figure.axes)==1
+    ax=fit.figure.axes[0]
+    assert "sigma" in ax.get_xlabel() and ax.get_legend() is not None and "hat B" in ax.get_title(loc="left")
+    assert any(abs(l.get_xdata()[0]-fit.window_lo_scaled)<1e-12 for l in ax.lines if len(l.get_xdata())==2)
+    assert ax.get_xlabel()!=fit.plot("raw").axes[0].get_xlabel()
+    joint=sb.mass(z,method="joint",friction="voigt",threads=1)
+    assert len(joint.figure.axes)==2 and "jump" in joint.figure.axes[1].get_title(loc="left")
+    for off in (False,None,"none"):assert sb.mass(z,threads=1,plot=off).figure is None
+    with pytest.raises(ValueError):sb.mass(z,plot="log")
+    both=sb.mass(z,threads=1,npmle=True)
+    assert isinstance(both.figure,Figure) and isinstance(both.npmle.figure,Figure) and both.figure is not both.npmle.figure
+    with pytest.raises(ValueError):sb.buncher_mean(z,z,threads=1,draws=19).plot()
+    monkeypatch.setitem(__import__("sys").modules,"matplotlib",None)
+    with pytest.warns(UserWarning,match="matplotlib"):missing=sb.mass(z,threads=1)
+    assert missing.figure is None and not missing.refused

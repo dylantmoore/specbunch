@@ -6,6 +6,6 @@ Methods: `cosine` (default), `joint`. Friction: `gaussian` (default), `voigt`. W
 
 See the repository `docs/REFERENCE.md` for every public option, field, flag and refusal reason, and `VENDOR.md` for source provenance. Build artifacts must be placed outside the source tree.
 
-`npmle` adds fixed-mass, fixed-friction spline postestimation, with a BIC-selected penalty, histogram shares and latent/observed/empirical curves. It returns data for plotting and contains no plotting code.
+`npmle` adds fixed-mass, fixed-friction spline postestimation, with a BIC-selected penalty, histogram shares and latent/observed/empirical curves. Each language wrapper draws default plots: `mass` shows the empirical transform with its fitted curve and selected window, and `npmle` shows the fitted distributions; pass `plot=False` (Stata `noplot`) to skip them.
 
 Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.

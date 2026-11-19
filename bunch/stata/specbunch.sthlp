@@ -2,7 +2,7 @@
 {title:specbunch}
 
 {p}Bunching mass and buncher mean with ranked sensitivity tables.{p_end}
-{cmd:specbunch mass z [if] [in] [pw=weight], method(cosine) friction(gaussian) policy(tiered)}
+{cmd:specbunch mass z [if] [in] [pw=weight], method(cosine) friction(gaussian) policy(tiered) [plot(scaled|raw) noplot name(name[, replace]) saving(filename[, replace])]}
 {cmd:specbunch buncher z x [if] [in] [pw=weight], draws(499)}
 {cmd:specbunch windows}
 
@@ -27,5 +27,6 @@
 {p}Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.{p_end}
 
 {p}e(transform) contains t, t_scaled, cosine, cosine_se and cosine_fit; joint fits add sine_scaled, sine_scaled_se and sine_fit. e(window_lo), e(window_hi) and e(n_points) describe the selected fitting window. See REFERENCE.md for the pointwise variance formula.{p_end}
+{p}By default {cmd:specbunch mass} draws the transform fit: the empirical cosine transform with a pointwise ±2 SE band, the fitted curve over the whole grid and the selected window shaded between dashed lines, titled with method, friction and the estimates. Joint fits add a panel with t times the sine transform and its fit, combined with {cmd:graph combine}. {opt plot(scaled)} (the default) uses frequency times the pilot scale on the horizontal axis; {opt plot(raw)} uses frequency t; {opt noplot} skips drawing. {opt name()} and {opt saving()} are passed to the final graph; give the mass and NPMLE graphs different names to keep both. Drawing uses preserve/restore.{p_end}
 
 {p}All four method/friction combinations are supported. Joint fits are unweighted. Voigt fits use coherence and poor_fit only; Gaussian distribution-shape checks are not applied.{p_end}

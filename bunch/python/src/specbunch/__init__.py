@@ -33,7 +33,8 @@ def version():
     return {"package": __version__, "core": _core.fn("version")().decode(), "abi": _core.fn("abi_version")()}
 
 def mass(z, kink=0.0, weights=None, method="cosine", friction="gaussian", policy="tiered", threads=None,
-         seed=1, check_all_windows=False, lp_iterations=5000, lp_retry_iterations=31250, npmle=False):
+         seed=1, check_all_windows=False, lp_iterations=5000, lp_retry_iterations=31250, npmle=False,
+         plot=True):
     """Estimate mass by weighted nonlinear least squares in transform levels.
 
     method="cosine" fits the empirical cosine transform; method="joint" also
@@ -43,6 +44,14 @@ def mass(z, kink=0.0, weights=None, method="cosine", friction="gaussian", policy
     result.transform contains t, t_scaled, cosine, cosine_se, cosine_fit; joint
     fits add sine_scaled, sine_scaled_se and sine_fit. n_points describes the
     selected fitting window, separate from the 401-point display grid.
+
+    plot=True (default) draws the empirical cosine transform with a +/-2 SE band,
+    the fitted curve over the whole grid and the shaded selected window into
+    result.figure (a second panel shows t*S(t) for joint fits); the x-axis is
+    t*sigma_pilot, or raw t with plot="raw". plot=False or None skips it.
+    Matplotlib is the optional extra specbunch[plot]; without it a warning is
+    issued and figure is None. plt.show() is never called. result.plot(frequency)
+    draws a new figure. With npmle=True the NPMLE figure is result.npmle.figure.
 
     policy is tiered (default) or first; checks flag coherent answers. The neutral
     bootstrap seed is 1. Distribution checks follow selection unless
@@ -63,10 +72,13 @@ def mass(z, kink=0.0, weights=None, method="cosine", friction="gaussian", policy
     o.policy=POLICIES[policy];o.check_all_windows=2 if check_all_windows else 0
     o.lp_iterations=integer(lp_iterations,64);o.lp_retry_iterations=integer(lp_retry_iterations,64)
     if min(o.lp_iterations,o.lp_retry_iterations)<=0:raise ValueError("LP iteration budgets must be positive")
+    if not isinstance(npmle,bool):raise TypeError("npmle must be boolean")
+    from ._plot import transform_xscale
+    xscale=transform_xscale(plot)
     d=_Data(len(z),pointer(z),pointer(w))
     result=Result(*_core.call("mass",d,o,int(method=="joint"),int(friction=="voigt")),"mass")
     result.kink=float(kink)
-    if not isinstance(npmle,bool):raise TypeError("npmle must be boolean")
+    if xscale is not None:_attach_figure(result,result.plot,xscale,"mass")
     if npmle:result.npmle=None if result.refused else globals()["npmle"](result,input_z,weights=w,threads=threads)
     return result
 
@@ -85,6 +97,15 @@ def buncher_mean(z,x,kink=0.0,weights=None,threads=None,seed=1,draws=499):
     d=_XY(len(z),pointer(z),pointer(x),pointer(w))
     result=Result(*_core.call("bmean",d,o),"bmean");result.kink=float(kink)
     return result
+
+def _attach_figure(result,draw,arg,name):
+    try:
+        import matplotlib  # noqa: F401
+    except ImportError:
+        import warnings
+        warnings.warn(f"matplotlib is not installed, so {name} returned results without a plot; "
+                      "install specbunch[plot] or pass plot=False", stacklevel=3)
+    else:result.figure=draw(arg)
 
 __all__=["default_threads","mass","buncher_mean","version","Result","CoreError","POLICIES"]
 
@@ -171,14 +192,7 @@ def npmle(fit,z,weights=None,bins=None,*,threads=None,core_intervals=12,grid_poi
     d=_Data(len(z),pointer(z),pointer(w))
     result=NpmleResult(*_core.call("npmle",d,o,pointer(edges),0 if edges is None else len(edges)),
                        xlabel=name if isinstance(name,str) and name else None)
-    if kind is not None:
-        try:
-            import matplotlib  # noqa: F401
-        except ImportError:
-            import warnings
-            warnings.warn("matplotlib is not installed, so npmle returned results without a plot; "
-                          "install specbunch[plot] or pass plot=False", stacklevel=2)
-        else:result.figure=result.plot(kind)
+    if kind is not None:_attach_figure(result,result.plot,kind,"npmle")
     return result
 
 __all__ += ["npmle","NpmleResult"]

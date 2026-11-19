@@ -74,8 +74,10 @@ end
     @test result.histogram.fitted_share == result.histogram.nonbuncher_share+result.histogram.buncher_share
     # Without Plots.jl loaded the default plot request is a no-op; plot=false is always silent.
     if !isdefined(Main,:Plots)
-        @test result.figure===nothing && fit.npmle.figure===nothing
+        @test result.figure===nothing && fit.npmle.figure===nothing && fit.figure===nothing
     end
+    @test mass(z;threads=1,plot=false).figure===nothing
+    @test_throws ArgumentError mass(z;plot=:log)
     @test npmle(fit,z;threads=1,grid_points=51,lambda_points=3,refinement_points=3,plot=false).figure===nothing
     @test_throws ArgumentError npmle(fit,z;plot=:hist)
 end

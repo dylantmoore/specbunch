@@ -128,6 +128,19 @@ class Result:
             self.transform=pd.DataFrame(columns)
         except ImportError:self.transform=columns
         self.diagnostics = raw.copy()
+        self.figure = None
+
+    def plot(self, frequency="scaled"):
+        """Return a new matplotlib Figure of the transform fit (mass results only).
+
+        Empirical cosine transform with a +/-2 SE band, fitted curve over the whole
+        grid and the shaded selected window; joint fits add a t*S(t) panel. frequency is
+        "scaled" (t*sigma_pilot, default) or "raw" (t). Never calls plt.show().
+        """
+        if self.kind != "mass":
+            raise ValueError("plot is available for mass results")
+        from ._plot import draw_transform
+        return draw_transform(self, frequency)
 
     def __getattr__(self, name):
         try:

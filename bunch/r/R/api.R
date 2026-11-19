@@ -83,11 +83,13 @@ summary.specbunch_result <- function(object, ...) {
        tier = object$tier, window = object$window, candidate_count = nrow(object$windows))
 }
 #' Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.
+#' By default the transform fit is drawn in interactive sessions; see plot.specbunch_mass.
 #' @export
 mass <- function(z,kink=0,weights=NULL,method=c("cosine","joint"),friction=c("gaussian","voigt"),
                  policy="tiered",threads=NULL,seed=1,check_all_windows=FALSE,
-                 lp_iterations=5000,lp_retry_iterations=31250,npmle=FALSE) {
+                 lp_iterations=5000,lp_retry_iterations=31250,npmle=FALSE,plot=TRUE) {
   zexpr <- substitute(z)
+  xscale <- transform_xscale(plot);draw <- !is.null(xscale) && (interactive() || !missing(plot))
   method <- match.arg(method);friction <- match.arg(friction)
   entry <- if(method=="joint") {if(friction=="voigt") 4L else 2L} else if(friction=="voigt") 1L else 0L
   policy <- match.arg(policy,c("tiered","first"))
@@ -101,6 +103,7 @@ mass <- function(z,kink=0,weights=NULL,method=c("cosine","joint"),friction=c("ga
   out <- result(.Call(C_estimate,entry,z,NULL,weight_column(weights,length(z)),opts),"mass")
   out$kink <- kink
   if(!is.logical(npmle)||length(npmle)!=1L||is.na(npmle)) stop("npmle must be logical")
+  if(draw) plot.specbunch_mass(out,xscale)
   if(npmle && !out$refused) {
     out$npmle <- get("npmle",mode="function")(out,original_z,weights=weights,threads=threads,plot=FALSE)
     out$npmle$xlabel <- npmle_xlabel(zexpr)

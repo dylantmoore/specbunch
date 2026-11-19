@@ -15,7 +15,17 @@ program define specbunch, eclass
         display as error "syntax: specbunch mass|buncher varlist, options"
         exit 198
     }
-    syntax varlist(numeric min=1 max=2) [if] [in] [pweight fweight], [Kink(real 0) Method(string) Friction(string) Policy(string) Threads(integer 0) Seed(string) Checkallwindows LPiterations(string) LPretryiterations(string) Draws(integer 499)]
+    syntax varlist(numeric min=1 max=2) [if] [in] [pweight fweight], [Kink(real 0) Method(string) Friction(string) Policy(string) Threads(integer 0) Seed(string) Checkallwindows LPiterations(string) LPretryiterations(string) Draws(integer 499) NOPLOT PLOT(string) NAME(string asis) SAVing(string asis)]
+    if "`plot'"=="" local plot scaled
+    local plot = lower("`plot'")
+    if !inlist("`plot'","scaled","raw","none") {
+        display as error "plot() must be scaled, raw or none"
+        exit 198
+    }
+    if "`noplot'"!="" local plot none
+    // Keep graph options apart from the result-name loop locals below.
+    local graph_name `"`name'"'
+    local graph_saving `"`saving'"'
     local inputs `varlist'
     local nv : word count `inputs'
     if ("`subcmd'"=="mass" & `nv'!=1) | ("`subcmd'"=="buncher" & `nv'!=2) error 198
@@ -154,6 +164,131 @@ program define specbunch, eclass
     else display as text "Refused (status " as result e(core_status) as text `"): `e(str_reason)'"'
     display as text "{hline 64}"
     display as text "Standard errors are not confidence intervals."
+    if "`subcmd'"=="mass" & "`plot'"!="none" _specbunch_transform_plot, frequency(`plot') name(`graph_name') saving(`graph_saving')
+end
+
+// Transform fit of a mass estimate: empirical transform with a +/-2 SE band, the fitted
+// curve over the whole grid and the shaded selected window. Joint fits add t*S(t).
+program define _specbunch_transform_plot
+    version 14.1
+    syntax, frequency(string) [name(string asis) saving(string asis)]
+    capture local nrows = rowsof(e(transform))
+    if _rc exit
+    if `nrows'<2 exit
+    tempname T
+    matrix `T'=e(transform)
+    local joint = colnumb(`T',"sine_scaled")<.
+    local sfx = cond("`frequency'"=="scaled","_scaled","")
+    local wlo = e(window_lo`sfx')
+    local whi = e(window_hi`sfx')
+    local haswin = `wlo'<. & `whi'<.
+    local fmt %9.4g
+    local head = strproper("`e(method)'")+" fit, `e(friction)' friction"
+    if e(core_status)!=0 local note1 `"`head'; refused: `e(str_reason)'"'
+    else if "`e(friction)'"=="voigt" local note1 "`head':  {it:B} = `=strtrim(string(e(B),"`fmt'"))',  {it:a} = `=strtrim(string(e(a),"`fmt'"))',  {it:s}{sup:2} = `=strtrim(string(e(s2),"`fmt'"))'"
+    else local note1 "`head':  {it:B} = `=strtrim(string(e(B),"`fmt'"))',  {it:σ} = `=strtrim(string(e(sigma),"`fmt'"))'"
+    local note2
+    if e(core_status)==0 & `joint' local note2 "jump = `=strtrim(string(e(jump),"`fmt'"))'"
+    local xtitle = cond("`frequency'"=="scaled","Scaled frequency {it:t}·{it:σ}{sub:pilot}","Frequency {it:t}")
+    local fit `"31 59 115"'
+    local edge `"184 134 11"'
+    local win `"251 236 200"'
+    local wlabel
+    if `haswin' local wlabel `"1 "Selected window [`=strtrim(string(`wlo',"`fmt'"))', `=strtrim(string(`whi',"`fmt'"))']""'
+    preserve
+    quietly {
+        drop _all
+        svmat double `T', names(col)
+        local x = cond("`frequency'"=="scaled","t_scaled","t")
+        summarize `x', meanonly
+        local xmin=r(min)
+        local xmax=r(max)
+        // Ticks inside the grid, so the axis spans exactly the display grid.
+        _natscale `xmin' `xmax' 7
+        local xdelta=r(delta)
+        local xt1=ceil(`xmin'/`xdelta')*`xdelta'
+        local xt2=floor(`xmax'/`xdelta')*`xdelta'
+    }
+    local graphs
+    local panels = cond(`joint',"cosine sine","cosine")
+    foreach p of local panels {
+        if "`p'"=="cosine" {
+            local y cosine
+            local se cosine_se
+            local f cosine_fit
+            local ytitle "Cosine transform Ĉ(t)"
+            local emp "Empirical Ĉ(t)"
+            local flab "Fit {it:B}·φ(t)"
+            local note `"`note1'"'
+        }
+        else {
+            local y sine_scaled
+            local se sine_scaled_se
+            local f sine_fit
+            local ytitle "Scaled sine transform {it:t}·Ŝ(t)"
+            local emp "Empirical {it:t}·Ŝ(t)"
+            local flab "Fit jump·φ(t)"
+            local note `"`note2'"'
+        }
+        tempvar lo hi wl wh
+        quietly {
+            generate double `lo'=`y'-2*`se'
+            generate double `hi'=`y'+2*`se'
+            summarize `lo', meanonly
+            local ymin=min(r(min),0)
+            summarize `hi', meanonly
+            local ymax=max(r(max),0)
+            summarize `f', meanonly
+            local nfit=r(N)
+            if `nfit'>0 {
+                local ymin=min(`ymin',r(min))
+                local ymax=max(`ymax',r(max))
+            }
+            local ymax=`ymax'+.18*(`ymax'-`ymin')
+            // Nice tick range, so the window shading spans the whole plot region.
+            _natscale `ymin' `ymax' 8
+            local ydelta=r(delta)
+            local ymin=floor(`ymin'/`ydelta')*`ydelta'
+            local ymax=ceil(`ymax'/`ydelta')*`ydelta'
+            generate double `wl'=`ymin' if inrange(`x',`wlo',`whi')
+            generate double `wh'=`ymax' if inrange(`x',`wlo',`whi')
+        }
+        local fitlayer
+        if `nfit'>0 local fitlayer (line `f' `x', lcolor(`"`fit'"') lwidth(medthin))
+        local winlayer
+        local winline
+        local k 0
+        if `haswin' {
+            local k 1
+            local winlayer (rarea `wh' `wl' `x', color(`"`win'"') lwidth(none))
+            local winline xline(`wlo' `whi', lpattern(dash) lcolor(`"`edge'"') lwidth(vthin))
+        }
+        local order `=`k'+2' "`emp'" `=`k'+1' "± 2 SE"
+        if `nfit'>0 local order `order' `=`k'+3' "`flab'"
+        local g
+        if `joint' {
+            tempname g
+            local nodraw nodraw
+        }
+        twoway `winlayer' (rarea `hi' `lo' `x', color(gs13) lwidth(none)) ///
+               (line `y' `x', lcolor(gs6) lwidth(vthin)) `fitlayer', ///
+               graphregion(color(white) margin(small)) plotregion(color(white) lstyle(none) margin(zero)) ///
+               ylabel(`ymin'(`ydelta')`ymax', angle(0) nogrid labsize(small)) xlabel(`xt1'(`xdelta')`xt2', nogrid labsize(small)) ///
+               yline(0, lcolor(gs10) lwidth(vthin) lpattern(solid)) `winline' ///
+               xscale(range(`xmin' `xmax')) yscale(range(`ymin' `ymax')) ///
+               xtitle(`"`xtitle'"', size(small)) ytitle(`"`ytitle'"', size(small)) ///
+               title(`"`note'"', size(small) position(11) justification(left) color(black)) ///
+               legend(order(`order' `wlabel') ring(0) position(1) cols(1) size(vsmall) symxsize(*.6) region(lstyle(none) fcolor(white))) ///
+               `nodraw' `=cond(`joint',"name(`g')",cond(`"`name'"'!="","name(`name')",""))' ///
+               `=cond(!`joint' & `"`saving'"'!="","saving(`saving')","")'
+        local graphs `graphs' `g'
+    }
+    restore
+    if `joint' {
+        graph combine `graphs', cols(2) xsize(10) ysize(3.9) iscale(*1.25) graphregion(color(white) margin(zero)) ///
+            `=cond(`"`name'"'!="","name(`name')","")' `=cond(`"`saving'"'!="","saving(`saving')","")'
+        graph drop `graphs'
+    }
 end
 
 // These helpers only transport C results. st_matrix supplies the legacy

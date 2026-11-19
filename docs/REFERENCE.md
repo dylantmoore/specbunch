@@ -1,13 +1,13 @@
 # Public reference
 
-`specbunch` estimates a bunching mass and a buncher outcome mean using frequency-domain fits. Python, R, Julia and Stata call the same deterministic C++ core. NPMLE postestimation provides default density and CDF plots through the language wrappers.
+`specbunch` estimates a bunching mass and a buncher outcome mean using frequency-domain fits. Python, R, Julia and Stata call the same deterministic C++ core. Mass estimation draws a default transform-fit plot, and NPMLE postestimation provides default density and CDF plots, through the language wrappers.
 
 ## Mass
 
 The headline estimator is weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits the sine transform. The companions are log-linear OLS and LAD on the reference band.
 
-Python: `mass(z, kink=0, weights=None, method="cosine", friction="gaussian", policy="tiered", threads=None, seed=1, check_all_windows=False, lp_iterations=5000, lp_retry_iterations=31250, npmle=False)`.
-R uses the same names with `NULL` and `FALSE`; Julia uses keyword arguments and method/friction/policy symbols. Stata uses `specbunch mass z [if] [in] [pw=weight], method(cosine) friction(gaussian) policy(tiered)`.
+Python: `mass(z, kink=0, weights=None, method="cosine", friction="gaussian", policy="tiered", threads=None, seed=1, check_all_windows=False, lp_iterations=5000, lp_retry_iterations=31250, npmle=False, plot=True)`.
+R uses the same names with `NULL` and `FALSE`; Julia uses keyword arguments and method/friction/policy symbols. Stata uses `specbunch mass z [if] [in] [pw=weight], method(cosine) friction(gaussian) policy(tiered) [plot(scaled|raw) noplot name() saving()]`.
 
 | Option | Meaning |
 |---|---|
@@ -23,6 +23,7 @@ R uses the same names with `NULL` and `FALSE`; Julia uses keyword arguments and 
 | lp_iterations | Initial LP simplex iteration budget, default 5000. |
 | lp_retry_iterations | Retry LP simplex iteration budget, default 31250. |
 | npmle | Attach spline postestimation with its default options when true and the mass estimate is coherent; default false. |
+| plot | Draw the transform fit by default, on scaled frequency; `raw` uses raw frequency and false skips drawing. See [Transform fit plot](#transform-fit-plot). |
 
 Stata spells the window-check and LP options `checkallwindows`, `lpiterations()` and `lpretryiterations()`; `kink()`, `threads()` and `seed()` have the meanings above.
 
@@ -189,7 +190,7 @@ The C ABI retains version 1, existing option layouts and existing entry points. 
 
 ## Transform fit data
 
-Every mass result includes a numeric `transform` table (Python pandas DataFrame when available, otherwise a dict of NumPy arrays; R data.frame; Julia NamedTuple of vectors; Stata e(transform)). No transform plotting code is included.
+Every mass result includes a numeric `transform` table (Python pandas DataFrame when available, otherwise a dict of NumPy arrays; R data.frame; Julia NamedTuple of vectors; Stata e(transform)). The default mass plot draws this table; see below.
 The table uses 401 equally spaced frequencies, from 0.1/pilot below the lowest candidate endpoint (clipped at zero) to 0.2/pilot beyond the highest candidate endpoint. It is empty when no candidate frequency range exists. Refused results with a range retain empirical curves but have missing fitted curves.
 
 | Column | Meaning |
@@ -204,6 +205,20 @@ The table uses 401 equally spaced frequencies, from 0.1/pilot below the lowest c
 | sine_fit | For joint fits, jump times the fitted friction transform (the fitted t-scaled sine curve). |
 
 `window_lo`, `window_hi` and their scaled versions identify the selected window; `n_points` gives its number of fitting frequencies. These frequencies are distinct from the display grid. Weighted pointwise variances use sum(w_i^2 (f_i - weighted_mean(f))^2) / sum(w_i)^2, with no degrees-of-freedom correction. Curves are diagnostic evaluations after selection and never feed back into the fit.
+
+### Transform fit plot
+
+By default `mass` draws the transform fit. The first panel shows the empirical cosine transform at each grid frequency with a pointwise ±2 SE band (`cosine` ± 2 `cosine_se`), the fitted curve `cosine_fit` over the whole grid and the selected window shaded between dashed lines at its endpoints. A panel title gives method, friction and the estimates (B and sigma; B, a and s2 for Voigt). Joint fits add a second panel with `sine_scaled` ± 2 `sine_scaled_se`, `sine_fit` and the same window, titled with the jump estimate. The horizontal axis is frequency times `sigma_pilot` by default, or raw frequency t on request. A refused result with a frequency range shows the empirical curves only; a result with an empty table draws nothing.
+
+Python defaults to `plot=True` (the same as `"scaled"`); `"raw"` uses raw frequency and `False`, `None` or `"none"` skips drawing. The figure is stored in `result.figure` and `result.plot(frequency="scaled")` returns a new one. The optional matplotlib extra, missing-matplotlib warning and no-`plt.show()` rules match NPMLE plotting.
+
+R defaults to `plot=TRUE` and draws with base graphics only in interactive sessions when the argument is omitted. Explicit `TRUE`, `"scaled"` or `"raw"` also draws in batch; `FALSE` or `"none"` suppresses drawing. The S3 method `plot(result, frequency="scaled")` redraws the result and returns it invisibly.
+
+Julia defaults to `plot=true` (the same as `:scaled`); `:raw` uses raw frequency and `false` or `nothing` suppresses drawing. With Plots loaded the figure is stored in `result.figure` and displayed in interactive sessions; without Plots the request is a no-op with a one-time informational message. `Plots.plot(result; frequency=:raw)` redraws the result.
+
+Stata draws by default with `specbunch mass z, plot(scaled)`; `plot(raw)` uses raw frequency and `noplot` suppresses drawing. `name(name[, replace])` and `saving(filename[, replace])` apply to the final graph; joint fits combine the two panels with `graph combine`. Drawing uses `preserve`/`restore`.
+
+With `npmle=True` (Python, R, Julia), the NPMLE figure is separate: `result.figure` holds the transform fit and `result.npmle.figure` holds the NPMLE plot. R draws the two plots in turn on the current device in interactive sessions; `plot(result)` and `plot(result$npmle)` redraw either. In Stata, `specbunch npmle` draws its own graph, so give the two graphs different `name()` values to keep both.
 
 ## Joint transform fit with Voigt friction
 

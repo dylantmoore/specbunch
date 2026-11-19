@@ -14,4 +14,6 @@ By default `npmle` draws two views of the fit next to the data. The density view
 
 `specbunch npmle` draws a `twoway` graph by default, combining the two views with `graph combine`. Use `plot(pdf)`, `plot(cdf)` or `plot(both)` to choose the view and `noplot` to skip it; `name()` and `saving()` are passed to the final graph, for example `name(npmle, replace)` or `saving(npmle.gph, replace)`. Export with `graph export npmle.png, name(npmle)`. Drawing uses `preserve`/`restore`, so the data and `e(sample)` are unchanged.
 
+`specbunch mass` also draws by default: the empirical cosine transform with a ±2 SE band, the fitted curve over the whole grid and the shaded selected window, on scaled frequency t·σ_pilot (`plot(scaled)`). `plot(raw)` uses raw t and `noplot` skips it; `name()` and `saving()` work as for `npmle`. Joint fits combine a cosine panel and a t·S(t) panel. Give the mass and NPMLE graphs different names to keep both.
+
 Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.

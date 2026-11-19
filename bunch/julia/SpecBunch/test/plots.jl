@@ -15,3 +15,14 @@ fit=mass(z;threads=1)
     @test plot(r;kind=:pdf) isa Plots.Plot
     isempty(ARGS) || (savefig(r.figure,ARGS[1]);println("saved ",ARGS[1]," B=",fit.B," sigma=",fit.sigma))
 end
+@testset "mass transform plots" begin
+    @test fit.figure isa Plots.Plot && length(fit.figure.subplots)==1
+    @test mass(z;threads=1,plot=false).figure===nothing && mass(z;threads=1,plot=nothing).figure===nothing
+    j=mass(z;method=:joint,friction=:voigt,threads=1)
+    @test j.figure isa Plots.Plot && length(j.figure.subplots)==2
+    @test plot(fit;frequency=:raw) isa Plots.Plot
+    both=mass(z;threads=1,npmle=true)
+    @test both.figure isa Plots.Plot && both.npmle.figure isa Plots.Plot && both.figure!==both.npmle.figure
+    @test_throws ArgumentError plot(buncher_mean(z,z;threads=1,draws=19))
+    length(ARGS)>=3 && (savefig(fit.figure,ARGS[2]);savefig(plot(fit;frequency=:raw),replace(ARGS[2],".png"=>"_raw.png")))
+end

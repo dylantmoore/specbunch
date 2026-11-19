@@ -27,6 +27,27 @@ end
 Base.propertynames(r::NpmleResult)=(:status_code,:raw,:figure,:histogram,:curves,:lambda_path,(Symbol(k) for k in keys(getfield(r,:raw)) if !occursin('.',k))...)
 # Set by the Plots.jl package extension (ext/SpecBunchPlotsExt.jl) when Plots is loaded.
 const _PLOT_HOOK=Ref{Any}(nothing)
+function _transform_xscale(plot)
+ (plot===nothing || plot===false) && return nothing
+ plot===true && return :scaled
+ if plot isa Union{Symbol,AbstractString}
+  k=Symbol(lowercase(String(plot)))
+  k in (:none,:false,:no,:off) && return nothing
+  k in (:scaled,:raw) && return k
+ end
+ throw(ArgumentError("plot must be true, :scaled, :raw or false/nothing"))
+end
+# Draw through the Plots extension when loaded; otherwise a one-time informational no-op.
+function _attach_figure!(result,arg,name)
+ if _PLOT_HOOK[]===nothing
+  @info "SpecBunch.$name: load Plots.jl (`using Plots`) to draw the default figure; pass plot=false to skip." maxlog=1
+ else
+  fig=_PLOT_HOOK[](result,arg)
+  result isa NpmleResult ? (result.figure=fig) : (result.metadata[:figure]=fig)
+  isinteractive() && display(fig)
+ end
+ result
+end
 function _plot_kind(plot)
  (plot===nothing || plot===false) && return nothing
  plot===true && return :both
@@ -81,13 +102,6 @@ function npmle(fit::Result,z;weights=nothing,bins=nothing,threads=nothing,core_i
    out[]==C_NULL || ccall((:sb_result_free,libspecbunch),Cvoid,(Ptr{Cvoid},),out[])
   end
  end
- if kind!==nothing
-  if _PLOT_HOOK[]===nothing
-   @info "SpecBunch.npmle: load Plots.jl (`using Plots`) to draw the fitted distributions; pass plot=false to skip." maxlog=1
-  else
-   result.figure=_PLOT_HOOK[](result,kind)
-   isinteractive() && display(result.figure)
-  end
- end
+ kind===nothing || _attach_figure!(result,kind,"npmle")
  result
 end

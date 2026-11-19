@@ -33,19 +33,27 @@ function _masscall(method,friction,data,o,out)
 end
 """Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.
 The transform NamedTuple contains t, t_scaled, cosine, cosine_se, cosine_fit; joint fits
-add sine_scaled, sine_scaled_se and sine_fit. n_points describes the selected window."""
+add sine_scaled, sine_scaled_se and sine_fit. n_points describes the selected window.
+
+`plot=true` (default, same as `:scaled`) draws the empirical cosine transform with a ±2 SE
+band, the fitted curve over the whole grid and the shaded selected window into
+`result.figure` when Plots.jl is loaded (joint fits add a t·S(t) panel); `:raw` uses raw t
+on the x-axis instead of t·σ_pilot. Without Plots the request is a no-op with a one-time
+`@info`; `plot=false` or `nothing` skips it. `plot(result; frequency=:raw)` redraws. With
+`npmle=true` the NPMLE figure is `result.npmle.figure`."""
 function mass(z;kink=0.0,weights=nothing,method=:cosine,friction=:gaussian,policy=:tiered,threads=nothing,seed=1,
-              check_all_windows=false,lp_iterations=5000,lp_retry_iterations=31250,npmle=false)
+              check_all_windows=false,lp_iterations=5000,lp_retry_iterations=31250,npmle=false,plot=true)
     z===nothing && throw(ArgumentError("z is required"))
     Symbol(method) in (:cosine,:joint) || throw(ArgumentError("method must be cosine or joint"))
     Symbol(friction) in (:gaussian,:voigt) || throw(ArgumentError("friction must be gaussian or voigt"))
+    xscale=_transform_xscale(plot);npmle isa Bool || throw(ArgumentError("npmle must be boolean"))
     z,w=_inputs(z,weights);original_z=z;kink==0 || (z=z .- Float64(kink))
     o=_massopts(;threads,seed,policy,check_all_windows,lp_iterations,lp_retry_iterations)
     out=Ref{Ptr{Cvoid}}(C_NULL)
     GC.@preserve z w begin
         d=MassData(length(z),pointer(z),_ptr(w));rc=_masscall(Symbol(method),Symbol(friction),d,o,out)
-        ans=_finish(rc,out[],:mass);ans.metadata[:kink]=Float64(kink)
-        npmle isa Bool || throw(ArgumentError("npmle must be boolean"))
+        ans=_finish(rc,out[],:mass);ans.metadata[:kink]=Float64(kink);ans.metadata[:figure]=nothing
+        xscale===nothing || _attach_figure!(ans,xscale,"mass")
         if npmle ans.metadata[:npmle]=ans.refused ? nothing : SpecBunch.npmle(ans,original_z;weights=w,threads) end
         ans
     end

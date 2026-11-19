@@ -68,6 +68,24 @@ assert e(core_status)==0
 assert "`e(method)'"=="joint" & "`e(friction)'"=="voigt"
 assert rowsof(e(transform))==401 & colsof(e(transform))==8
 assert e(a)>=0 & e(s2)>=0 & e(sigma_eq)>0
+graph drop _all
+specbunch mass z, method(joint) friction(voigt) threads(1) name(sbjoint, replace)
+quietly graph dir
+assert strpos(" `r(list)' "," sbjoint ")>0
+quietly graph describe sbjoint
+assert strpos(`"`r(command)'"',"combine")>0
+graph drop _all
+specbunch mass z, threads(1) noplot
+quietly graph dir
+assert strtrim("`r(list)'")==""
+specbunch mass z, threads(1) plot(raw) name(sbraw)
+quietly graph dir
+assert strpos(" `r(list)' "," sbraw ")>0
+quietly graph describe sbraw
+assert strpos(`"`r(command)'"',"twoway")>0
+capture specbunch mass z, plot(log)
+assert _rc==198
+graph drop _all
 specbunch mass z [pw=weights], threads(1)
 assert e(core_status)==0
 assert rowsof(e(transform))==401
