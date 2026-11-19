@@ -11,7 +11,7 @@ install.packages("remotes")
 remotes::install_github("dylantmoore/specbunch", subdir = "bunch/r")
 ```
 
-Pre-release research software: read [Status and testing](https://github.com/dylantmoore/specbunch#status-and-testing) before relying on it. Cite: Moore, Dylan (2026). "An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution." Working paper.
+Pre-release research software: read [Status and testing](https://github.com/dylantmoore/specbunch#status-and-testing) before relying on it. Cite: Moore, Dylan (2026). "Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs." Working paper.
 
 Methods: `cosine` (default), `joint`. Friction: `gaussian` (default), `voigt`. Window rules: `tiered` (default), `first`. Every fit returns ranked sensitivity tables; coherent estimates carry diagnostic flags.
 
@@ -33,5 +33,5 @@ Weighted nonlinear least squares of the empirical cosine transform in levels, wi
 
 Our code is MIT licensed, Copyright (c) 2026 Dylan Moore. Third-party components
 retain their own licences; see THIRD_PARTY_NOTICES.md and the supplied licence texts.
-Please cite Moore, Dylan (2026). *An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution*. Working paper.
-This paper title is a placeholder and will be updated. See CITATION.cff.
+Please cite Moore, Dylan (2026). *Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs*. Working paper.
+See CITATION.cff.

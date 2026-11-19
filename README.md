@@ -142,15 +142,15 @@ Our code is MIT licensed, Copyright (c) 2026 Dylan Moore. Third-party components
 retain their own licences; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 If you use `specbunch`, please cite:
 
-> Moore, Dylan (2026). *An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution*. Working paper.
+> Moore, Dylan (2026). *Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs*. Working paper.
 
-This paper title is a placeholder and will be updated. See [CITATION.cff](CITATION.cff).
+See [CITATION.cff](CITATION.cff).
 
 ```bibtex
 @unpublished{moore2026spectral,
   author = {Moore, Dylan},
-  title  = {An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution},
-  note   = {Working paper; placeholder title to be updated},
+  title  = {Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs},
+  note   = {Working paper},
   year   = {2026}
 }
 ```

@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "Please cite the working paper; its title is a placeholder to be updated."
+message: "Please cite the working paper."
 type: software
 title: "specbunch"
 authors:
@@ -9,9 +9,9 @@ license: MIT
 repository-code: "https://github.com/dylantmoore/specbunch"
 preferred-citation:
   type: unpublished
-  title: "An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution"
+  title: "Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs"
   authors:
     - family-names: Moore
       given-names: Dylan
   year: 2026
-  notes: "Working paper. Placeholder title: update when the paper title is final."
+  notes: "Working paper."
