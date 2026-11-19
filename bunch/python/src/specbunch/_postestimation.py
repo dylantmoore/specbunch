@@ -10,6 +10,8 @@ for name,opts,data in (("nonbuncher_mean",_Nonbuncher,_XY),("eti",_Eti,_Data)):
     _core.bind("opts_"+name+"_init",[C.POINTER(opts)],None)
     _core.bind(name,[C.POINTER(data),C.POINTER(opts),C.POINTER(C.c_void_p)],C.c_int)
 
+_core.bind("eti_shoulders",[C.POINTER(_Eti),C.c_double,C.c_double,C.POINTER(C.c_void_p)],C.c_int)
+
 class PostestimationResult:
     """Owned core outputs; SE is conditional and is not a confidence interval."""
     def __init__(self,status_code,raw):
@@ -21,7 +23,12 @@ class PostestimationResult:
     def __getattr__(self,name):
         if name in self.raw:return self.raw[name]
         raise AttributeError(name)
-    def __repr__(self):return f"PostestimationResult(status={self.status!r}, flags={self.flags!r})"
+    def __repr__(self):
+        if "saez.e" not in self.raw:return f"PostestimationResult(status={self.status!r}, flags={self.flags!r})"
+        text=f"ETI(transform: Saez={self.saez.e:.6g}, C0={self.continuous.e:.6g}; flags={self.flags!r}"
+        if hasattr(self,"npmle"):
+            n=self.npmle;text+=f"; NPMLE-{n.basis}: Saez={n.saez.e:.6g}, C0={n.continuous.e:.6g}; flags={n.flags!r}"
+        return text+")"
 
 def _mass_options(o,fit,kink):
     if not isinstance(fit,Result) or fit.kind!="mass" or fit.refused:
@@ -57,8 +64,12 @@ def nonbuncher_mean(z,x,mass_fit,buncher_mean_fit=None,*,mu_b=None,se_mu_b=0,
     return PostestimationResult(*_core.call("nonbuncher_mean",_XY(len(z),pointer(z),pointer(x),pointer(w)),o))
 
 def _eti_estimate(fit,z,tax_below=None,tax_above=None,*,net_below=None,net_above=None,
-                  kink=None,weights=None,integration_intervals=200,threads=None):
-    """Saez trapezoid and continuous completion using CF-native shoulders.
+                  kink=None,weights=None,integration_intervals=200,threads=None,npmle=None):
+    """Saez trapezoid and C0 completion, with automatic NPMLE comparison.
+
+    npmle accepts a fitted NpmleResult or True to fit default cubic splines.
+    None automatically uses fit.npmle if attached. Existing saez/continuous
+    are transform results; npmle.saez/continuous are the additional results.
 
     Supply both tax rates or both positive net-of-tax rates; the latter must
     decrease across the kink. z is log income, not income in levels. Returns
@@ -78,4 +89,23 @@ def _eti_estimate(fit,z,tax_below=None,tax_above=None,*,net_below=None,net_above
     o=_Eti();_core.fn("opts_eti_init")(C.byref(o));_mass_options(o,fit,kink)
     o.window_lo=fit.raw["window_lo"];o.window_hi=fit.raw["window_hi"]
     o.net_below=float(net_below);o.net_above=float(net_above);o.integration_intervals=integer(integration_intervals);o.threads=integer(0 if threads is None else threads)
-    return PostestimationResult(*_core.call("eti",_Data(len(z),pointer(z),pointer(w)),o))
+    result=PostestimationResult(*_core.call("eti",_Data(len(z),pointer(z),pointer(w)),o))
+    result.shoulder_source="transform"
+    from . import NpmleResult, npmle as fit_npmle
+    if npmle is None:npmle=getattr(fit,"npmle",None)
+    if npmle is True:npmle=fit_npmle(fit,z,weights=w,threads=threads,plot=False)
+    if npmle is not None:
+        if not isinstance(npmle,NpmleResult):raise ValueError("npmle must be a NpmleResult, True or None")
+        for key in ("B","sigma","a","kink"):
+            if npmle.raw[key]!=getattr(o,key):raise ValueError("NPMLE and mass inputs must match")
+        handle=C.c_void_p()
+        rc=_core.fn("eti_shoulders")(C.byref(o),npmle.latent_left,npmle.latent_right,C.byref(handle))
+        # Use the shared extraction and ownership path, via a small options-first adapter.
+        result.npmle=PostestimationResult(*_core.finish(rc,handle))
+        result.npmle.basis=npmle.basis
+        result.npmle.npmle_status=npmle.status
+        for key in ("lambda_at_grid_edge","shoulders_weak","shoulders_inconclusive","shoulder_sensitivity_left","shoulder_sensitivity_right"):
+            setattr(result.npmle,key,npmle.raw[key])
+            if key in ("lambda_at_grid_edge","shoulders_weak","shoulders_inconclusive") and npmle.raw[key]:result.npmle.flags.append(key)
+        if npmle.status_code:result.npmle.flags.append(npmle.status)
+    return result

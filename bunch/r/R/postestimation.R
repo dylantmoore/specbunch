@@ -35,7 +35,7 @@ nonbuncher_mean <- function(z,x,mass_fit,buncher_mean_fit=NULL,mu_b=NULL,se_mu_b
 #' Elasticity of taxable income by shift-and-complete
 #' @export
 eti <- function(fit,z,tax_below=NULL,tax_above=NULL,net_below=NULL,net_above=NULL,
-                kink=NULL,weights=NULL,integration_intervals=200,threads=NULL) {
+                kink=NULL,weights=NULL,integration_intervals=200,threads=NULL,npmle=NULL) {
  opts <- post_mass_options(fit,kink,threads)
  if(is.null(net_below)&&is.null(net_above)) {
   if(is.null(tax_below)||is.null(tax_above)) stop("supply both tax rates or both net-of-tax rates")
@@ -44,13 +44,28 @@ eti <- function(fit,z,tax_below=NULL,tax_above=NULL,net_below=NULL,net_above=NUL
  opts$net_below <- scalar(net_below,"net_below");opts$net_above <- scalar(net_above,"net_above")
  opts$window_lo <- fit$window_lo;opts$window_hi <- fit$window_hi
  opts$integration_intervals <- scalar(integration_intervals,"integration_intervals",TRUE,2147483647)
- z <- numeric_column(z,"z");post_result(.Call(C_post,1L,z,NULL,weight_column(weights,length(z)),opts))
+ z <- numeric_column(z,"z");weights <- weight_column(weights,length(z))
+ out <- post_result(.Call(C_post,1L,z,NULL,weights,opts));out$shoulder_source <- "transform"
+ if(is.null(npmle)) npmle <- fit$npmle
+ if(isTRUE(npmle)) npmle <- get("npmle",mode="function")(fit,z,weights=weights,threads=threads,plot=FALSE)
+ if(!is.null(npmle)) {
+  if(!inherits(npmle,"specbunch_npmle_result")) stop("npmle must be an NPMLE result, TRUE or NULL")
+  for(k in c("B","sigma","a","kink")) if(npmle[[k]]!=opts[[k]]) stop("NPMLE and mass inputs must match")
+  opts$left <- npmle$latent_left;opts$right <- npmle$latent_right
+  out$npmle <- post_result(.Call(C_post,2L,z,NULL,weights,opts))
+  out$npmle$basis <- npmle$basis;out$npmle$npmle_status <- npmle$status
+  for(k in c("lambda_at_grid_edge","shoulders_weak","shoulders_inconclusive","shoulder_sensitivity_left","shoulder_sensitivity_right")) out$npmle[[k]] <- npmle[[k]]
+  for(k in c("lambda_at_grid_edge","shoulders_weak","shoulders_inconclusive")) if(npmle[[k]]!=0) out$npmle$flags <- c(out$npmle$flags,k)
+  if(npmle$status_code!=0) out$npmle$flags <- c(out$npmle$flags,npmle$status)
+ }
+ out
 }
 #' Display postestimation results
 #' @export
 print.specbunch_postestimation <- function(x,...) {
  cat(x$estimator,": ",x$status,"\n",sep="")
  if(!is.null(x$m_NB)) {cat("m_NB =",x$m_NB,"; SE =",x$se,"\n");cat(x$se_note,"\n")} else {print(x$saez);print(x$continuous)}
+ if(!is.null(x$npmle)) {cat("NPMLE",x$npmle$basis,"shoulders:\n");print(x$npmle$saez);print(x$npmle$continuous);cat("NPMLE flags:",paste(x$npmle$flags,collapse=", "),"\n")}
  if(length(x$flags)) cat("Flags:",paste(x$flags,collapse=", "),"\n")
  invisible(x)
 }

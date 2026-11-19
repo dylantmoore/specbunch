@@ -15,6 +15,7 @@ function Base.getproperty(r::PostestimationResult,s::Symbol)
  raw=getfield(r,:raw)
  s==:refused && return getfield(r,:status_code)!=0
  s==:flags && return split(raw["flags"])
+ s==:shoulder_source && return get(raw,"shoulder_source","transform")
  if s in (:local_fit,:saez,:continuous)
   prefix=String(s)*".";names=sort!([k for k in keys(raw) if startswith(k,prefix)])
   return (;(Symbol(k[length(prefix)+1:end])=>raw[k] for k in names)...)
@@ -23,7 +24,15 @@ function Base.getproperty(r::PostestimationResult,s::Symbol)
  throw(ArgumentError("unknown postestimation property $s"))
 end
 Base.propertynames(r::PostestimationResult)=(:status_code,:raw,:refused,:flags,:local_fit,:saez,:continuous,(Symbol(k) for k in keys(getfield(r,:raw)) if !occursin('.',k))...)
-Base.show(io::IO,r::PostestimationResult)=print(io,"PostestimationResult(status=",r.status,", flags=",r.flags,")")
+function Base.show(io::IO,r::PostestimationResult)
+ print(io,"PostestimationResult(status=",r.status,", flags=",r.flags,")")
+ if haskey(r.raw,"saez.e")
+  print(io," transform: Saez=",r.saez.e,", C0=",r.continuous.e)
+  if haskey(r.raw,"npmle")
+   n=r.npmle;print(io,"; NPMLE-",n.basis,": Saez=",n.saez.e,", C0=",n.continuous.e,", flags=",n.flags)
+  end
+ end
+end
 function _post_finish(rc,handle)
  try
   rc==0 || throw(CoreError(rc,unsafe_string(ccall((:sb_last_error,libspecbunch),Cstring,()))))
@@ -68,7 +77,7 @@ function nonbuncher_mean(z,x,mass_fit,buncher_mean_fit=nothing;mu_b=nothing,se_m
  end
 end
 function _eti_estimate(fit,z;tax_below=nothing,tax_above=nothing,net_below=nothing,net_above=nothing,
-                       kink=nothing,weights=nothing,integration_intervals=200,threads=nothing)
+                       kink=nothing,weights=nothing,integration_intervals=200,threads=nothing,npmle=nothing)
  B,s,a,k=_post_mass(fit,kink)
  if net_below===nothing && net_above===nothing
   (tax_below===nothing || tax_above===nothing) && throw(ArgumentError("supply both tax rates or both net-of-tax rates"))
@@ -81,13 +90,33 @@ function _eti_estimate(fit,z;tax_below=nothing,tax_above=nothing,net_below=nothi
  GC.@preserve z w begin
   d=MassData(length(z),pointer(z),_ptr(w))
   rc=ccall((:sb_eti,libspecbunch),Cint,(Ref{MassData},Ref{EtiOpts},Ref{Ptr{Cvoid}}),d,o,out)
-  _post_finish(rc,out[])
+  result=_post_finish(rc,out[])
+  npmle===nothing && (npmle=get(fit.metadata,:npmle,nothing))
+  npmle===true && (npmle=SpecBunch.npmle(fit,z;weights=w,threads,plot=false))
+  if npmle!==nothing
+   npmle isa NpmleResult || throw(ArgumentError("npmle must be an NPMLE result, true or nothing"))
+   for (key,value) in (("B",B),("sigma",s),("a",a),("kink",k))
+    npmle.raw[key]==value || throw(ArgumentError("NPMLE and mass inputs must match"))
+   end
+   out[]=C_NULL
+   rc=ccall((:sb_eti_shoulders,libspecbunch),Cint,(Ref{EtiOpts},Cdouble,Cdouble,Ref{Ptr{Cvoid}}),o,npmle.latent_left,npmle.latent_right,out)
+   comparison=_post_finish(rc,out[]);comparison.raw["basis"]=npmle.basis;comparison.raw["npmle_status"]=npmle.status
+   for key in ("lambda_at_grid_edge","shoulders_weak","shoulders_inconclusive","shoulder_sensitivity_left","shoulder_sensitivity_right")
+    comparison.raw[key]=npmle.raw[key]
+   end
+   for key in ("lambda_at_grid_edge","shoulders_weak","shoulders_inconclusive")
+    npmle.raw[key]!=0 && (comparison.raw["flags"]*=" "*key)
+   end
+   npmle.status_code!=0 && (comparison.raw["flags"]*=" "*npmle.status)
+   result.raw["npmle"]=comparison
+  end
+  result
  end
 end
 """Elasticity of taxable income by shift-and-complete; no forward transform completion or derivative rules."""
 module ETI
 import ..SpecBunch: _eti_estimate
 export estimate
-"""estimate(fit,z; tax_below,tax_above) or net_below/net_above returns saez and continuous e/d, shoulders and flags. Input z is in log units; shoulders are finite-resolution CF functionals. No SE or confidence interval is computed. See REFERENCE.md."""
+"""npmle accepts an NpmleResult or true; nothing automatically uses fit.npmle when attached. Additional npmle.saez/continuous results accompany the transform results. estimate(fit,z; tax_below,tax_above) or net_below/net_above returns saez and continuous e/d, shoulders and flags. Input z is in log units; shoulders are finite-resolution CF functionals. No SE or confidence interval is computed. See REFERENCE.md."""
 estimate(args...;kwargs...)=_eti_estimate(args...;kwargs...)
 end

@@ -4,9 +4,10 @@
 \usage{
 eti(fit, z, tax_below = NULL, tax_above = NULL,
   net_below = NULL, net_above = NULL, kink = NULL, weights = NULL,
-  integration_intervals = 200, threads = NULL)
+  integration_intervals = 200, threads = NULL, npmle = NULL)
 }
 \arguments{
+\item{npmle}{An NPMLE result or TRUE to fit cubic splines; NULL automatically uses fit$npmle when present. The additional npmle result contains both completion rules and shoulder diagnostics.}
 \item{fit}{Coherent mass result supplying mass, friction and frequency window.}
 \item{z}{Running variable already expressed in log units.}
 \item{tax_below, tax_above}{Marginal tax rates on the two sides; subsidies may be negative.}

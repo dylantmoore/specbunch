@@ -77,3 +77,5 @@ sets Simpson intervals below the mass window; {cmd:threads(0)} controls
 fixed-chunk execution. Structural interpretation requires homogeneous
 isoelastic shifting and the supplied marginal incentives; the shoulders are
 finite-resolution functionals. Report Gaussian/Voigt results and mass-fit flags.
+
+{p}NPMLE accepts {opt basis(cubic|linear)} and optional taxbelow()/taxabove() or netbelow()/netabove(). When rates are supplied, ETI always reports the transform and NPMLE shoulder pair. ETI also automatically uses an attached NPMLE, or fits one with {opt npmle}. Additional scalars use e(npmle_saez_e), e(npmle_continuous_e), and e(npmle_shoulder_left/right). Grid-edge, shoulders_weak, and shoulders_inconclusive diagnostics are reported; see REFERENCE.md for the BIC-nearby sensitivity definition. No confidence intervals are computed.{p_end}

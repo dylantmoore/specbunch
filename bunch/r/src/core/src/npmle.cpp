@@ -15,6 +15,7 @@ static int run(const sb_data* data,const sb_opts_npmle* supplied,const double* e
  std::memcpy(&o,supplied,std::min<size_t>(supplied->struct_size,sizeof o));
  if(!(o.B>0&&o.B<1&&o.sigma>=0&&o.a>=0&&o.sigma+o.a>0&&std::isfinite(o.B+o.sigma+o.a+o.kink)))return sbc::fail(SBC_E_INPUT,"mass and friction must be coherent and finite");
  if(o.core_intervals<4||o.core_intervals>64||o.grid_points<25||o.grid_points>10001||o.exact_threshold<0||o.max_iterations<1||o.lambda_points<3||o.lambda_points>101||o.refinement_points<3||o.refinement_points>101||!(o.lambda_min>0&&o.lambda_max>o.lambda_min)||!(o.quadrature_tolerance>0)||!(o.optimality_tolerance>0)||o.histogram_width<0||!std::isfinite(o.histogram_width+o.lambda_min+o.lambda_max+o.quadrature_tolerance+o.optimality_tolerance))return sbc::fail(SBC_E_INPUT,"invalid NPMLE numerical options");
+ if(o.reserved!=0&&o.reserved!=1)return sbc::fail(SBC_E_INPUT,"basis must be cubic (0) or linear (1)");
  if(!data->z||data->n==0)return sbc::fail(SBC_E_INPUT,"NPMLE requires a nonempty sample");
  if(nedges&&(nedges<2||!edges))return sbc::fail(SBC_E_INPUT,"bins must contain at least two edges");
  for(size_t i=0;i<nedges;++i)if(!std::isfinite(edges[i])||(i&&edges[i]<=edges[i-1]))return sbc::fail(SBC_E_INPUT,"bin edges must be finite and strictly increasing");
@@ -27,7 +28,7 @@ static int run(const sb_data* data,const sb_opts_npmle* supplied,const double* e
  double minimum=sample.front().first,maximum=sample.back().first;
  auto quantile=[&](double q){return sample[(size_t)(q*(sample.size()-1))].first;};
  double core_left=std::max(4*scale,-quantile(.005)),core_right=std::max(4*scale,quantile(.995));
- SplineBasis basis(make_knots(core_left,std::max(core_left,-minimum+4*scale),o.core_intervals),make_knots(core_right,std::max(core_right,maximum+4*scale),o.core_intervals));
+ SplineBasis basis(make_knots(core_left,std::max(core_left,-minimum+4*scale),o.core_intervals),make_knots(core_right,std::max(core_right,maximum+4*scale),o.core_intervals),o.reserved==1?1:3);
  int m=basis.count;bool exact=sample.size()<=(size_t)o.exact_threshold;vector<Row> rows;
  if(exact){for(auto&zw:sample)rows.push_back({zw.first,zw.first,zw.second*neff/total});}
  else for(size_t i=0;i<sample.size();){double key=std::floor(sample[i].first/width),w=0;size_t j=i;while(j<sample.size()&&std::floor(sample[j].first/width)==key){w+=sample[j].second;++j;}rows.push_back({key*width,(key+1)*width,w*neff/total});i=j;}
@@ -69,6 +70,18 @@ static int run(const sb_data* data,const sb_opts_npmle* supplied,const double* e
  r.set("lambda",fit.lambda);r.set("edf",fit.edf);r.set("loglik",fit.loglik);r.set("bic",fit.bic);r.set("lambda_at_grid_edge",edge);r.set("B",o.B);r.set("sigma",o.sigma);r.set("a",o.a);r.set("kink",o.kink);r.set("n",sample.size());r.set("n_input",data->n);r.set("n_eff",neff);r.set("threads_used",threads.count());r.set("histogram_width",width);r.set("exact_observations",exact);r.set("likelihood_rows",rows.size());r.set("basis_count",m);r.set("kkt",fit.kkt);r.set("iterations",fit.iterations);r.set("edf_ridge",fit.edf_ridge);
  vector<double> theta(m);for(int j=0;j<m;++j)theta[j]=(1-o.B)*fit.p[j]/basis.area[j];r.setv("coefficients",theta);r.setv("knots_left",basis.left.knots);r.setv("knots_right",basis.right.knots);
  double left=theta[0],right=theta[basis.left.count];r.set("latent_left",left);r.set("latent_right",right);r.set("latent_jump",right-left);
+ r.sets("basis",o.reserved==1?"linear":"cubic");
+ // Sensitivity among converged evaluated penalties within two BIC points.
+ double sens_left=0,sens_right=0;int comparable=0;
+ double floor=std::max(1e-12,1e-6*(left+right)/2);
+ for(const auto& f:path)if(f.converged&&f.bic<=fit.bic+2){
+  ++comparable;double l=(1-o.B)*f.p[0]/basis.area[0],rr=(1-o.B)*f.p[basis.left.count]/basis.area[basis.left.count];
+  sens_left=std::max(sens_left,std::fabs(l-left)/std::max(left,floor));
+  sens_right=std::max(sens_right,std::fabs(rr-right)/std::max(right,floor));
+ }
+ r.set("shoulder_sensitivity_left",sens_left);r.set("shoulder_sensitivity_right",sens_right);
+ r.set("shoulder_lambda_count",comparable);r.set("shoulders_inconclusive",comparable<2||!fit.converged);
+ r.set("shoulders_weak",sens_left>.25||sens_right>.25);
  auto mixture=[&](const vector<double>& v){double smooth=0;for(int j=0;j<m;++j)smooth+=(1-o.B)*fit.p[j]*v[j];return smooth;};
  vector<double> bins;
  if(nedges){for(size_t i=0;i<nedges;++i)bins.push_back(edges[i]-o.kink);}
@@ -97,8 +110,8 @@ static int run(const sb_data* data,const sb_opts_npmle* supplied,const double* e
  for(size_t i=0;i<ng;++i){vector<double> p(m),c(m);basis.evaluate(grid[i],0,p.data(),c.data());lp[i]=mixture(p);lc[i]=mixture(c)+(grid[i]>=0?o.B:0);FrictionKernel kernel(basis,o.sigma,o.a,o.quadrature_tolerance);kernel.evaluate(grid[i],p,c);op[i]=mixture(p)+o.B*p.back();oc[i]=mixture(c)+o.B*c.back();ge[i]=kernel.error;gf[i]=kernel.exhausted;}
  size_t index=0;double running=0;for(size_t i=0;i<ng;++i){while(index<sample.size()&&sample[index].first<=grid[i]){running+=sample[index].second;++index;}ec[i]=running/total;grid[i]+=o.kink;quadrature_error=std::max(quadrature_error,ge[i]);quadrature_failed=quadrature_failed||gf[i];}
  r.setv("curves.grid",grid);r.setv("curves.latent_pdf",lp);r.setv("curves.latent_cdf",lc);r.setv("curves.observed_pdf",op);r.setv("curves.observed_cdf",oc);r.setv("curves.empirical_cdf",ec);
- vector<double> lambdas,lls,edfs,bics,converged,kkts;for(auto&entry:visited){const auto&f=path[entry.second];lambdas.push_back(f.lambda);lls.push_back(f.loglik);edfs.push_back(f.edf);bics.push_back(f.bic);converged.push_back(f.converged);kkts.push_back(f.kkt);}
- r.setv("lambda_path.lambda",lambdas);r.setv("lambda_path.loglik",lls);r.setv("lambda_path.edf",edfs);r.setv("lambda_path.bic",bics);r.setv("lambda_path.converged",converged);r.setv("lambda_path.kkt",kkts);
+ vector<double> lambdas,lls,edfs,bics,converged,kkts,lefts,rights;for(auto&entry:visited){const auto&f=path[entry.second];lefts.push_back((1-o.B)*f.p[0]/basis.area[0]);rights.push_back((1-o.B)*f.p[basis.left.count]/basis.area[basis.left.count]);lambdas.push_back(f.lambda);lls.push_back(f.loglik);edfs.push_back(f.edf);bics.push_back(f.bic);converged.push_back(f.converged);kkts.push_back(f.kkt);}
+ r.setv("lambda_path.latent_left",lefts);r.setv("lambda_path.latent_right",rights);r.setv("lambda_path.lambda",lambdas);r.setv("lambda_path.loglik",lls);r.setv("lambda_path.edf",edfs);r.setv("lambda_path.bic",bics);r.setv("lambda_path.converged",converged);r.setv("lambda_path.kkt",kkts);
  r.set("quadrature_error",quadrature_error);r.set("gaussian_tail_bound",o.sigma>0?std::erfc(9/std::sqrt(2.)):0);r.set("gaussian_pdf_error_bound",o.sigma==0?0:o.a>0?std::erfc(9/std::sqrt(2.))/(pi*o.a):normal_pdf(9)/o.sigma);r.set("unconverged_lambdas",std::count(converged.begin(),converged.end(),0.));
  r.status=!fit.converged?1:quadrature_failed?2:0;r.set("status_code",r.status);r.sets("status",!fit.converged?"solver_not_converged":quadrature_failed?"quadrature_not_converged":"converged");r.sets("jump_note","The latent density jump is weakly identified.");r.sets("likelihood",exact?"exact_observations":"full_sample_histogram");r.finish_names();*out=reinterpret_cast<sb_result*>(result.release());return SBC_OK;
 }

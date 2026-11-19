@@ -58,11 +58,16 @@ function _plot_kind(plot)
  end
  throw(ArgumentError("plot must be :both, :pdf, :cdf, true or false/nothing"))
 end
-Base.show(io::IO,r::NpmleResult)=print(io,"NpmleResult(status=",r.status,", lambda=",r.lambda,", edf=",r.edf,")")
+function Base.show(io::IO,r::NpmleResult)
+ print(io,"NpmleResult(basis=",r.basis,", status=",r.status,", lambda=",r.lambda,", edf=",r.edf,")")
+ haskey(r.raw,"eti") && (print(io,"\n");show(io,r.eti))
+end
 """
     npmle(fit,z; weights=nothing,bins=nothing,...)
 
-Fit nonnegative clamped cubic splines on each side with fixed atom mass and
+Use basis=:cubic (default) or :linear. A supplied tax_below/tax_above or
+net_below/net_above pair automatically attaches result.eti with both shoulder
+calculations. Fit nonnegative clamped splines on each side with fixed atom mass and
 friction. BIC selects the roughness penalty. Returns histogram shares and the
 latent, observed and empirical curves; see docs/REFERENCE.md.
 
@@ -83,13 +88,15 @@ Advanced (solver settings): `threads`, `core_intervals`, `grid_points`,
 function npmle(fit::Result,z;weights=nothing,bins=nothing,threads=nothing,core_intervals=12,
                grid_points=1001,exact_threshold=1000,max_iterations=200,lambda_min=.01,
                lambda_max=10000.,lambda_points=15,refinement_points=9,histogram_width=nothing,
-               quadrature_tolerance=1e-9,optimality_tolerance=1e-7,plot=:both)
+               quadrature_tolerance=1e-9,optimality_tolerance=1e-7,plot=:both,basis=:cubic,
+               tax_below=nothing,tax_above=nothing,net_below=nothing,net_above=nothing)
  fit.kind==:mass && !fit.refused || throw(ArgumentError("npmle requires a coherent mass result"))
+ Symbol(basis) in (:cubic,:linear) || throw(ArgumentError("basis must be cubic or linear"))
  kind=_plot_kind(plot)
  z,w=_inputs(z,weights);edges=bins===nothing ? nothing : _vector(bins)
  a=fit.raw["friction"]=="voigt" ? fit.raw["a"] : 0.
  o=NpmleOpts(UInt32(sizeof(NpmleOpts)),1,_threads(threads),Int32(core_intervals),Int32(grid_points),Int32(exact_threshold),
-             Int32(max_iterations),Int32(lambda_points),Int32(refinement_points),0,fit.B,fit.sigma,a,fit.kink,
+             Int32(max_iterations),Int32(lambda_points),Int32(refinement_points),Int32(Symbol(basis)==:linear),fit.B,fit.sigma,a,fit.kink,
              histogram_width===nothing ? 0. : Float64(histogram_width),Float64(lambda_min),Float64(lambda_max),Float64(quadrature_tolerance),Float64(optimality_tolerance))
  out=Ref{Ptr{Cvoid}}(C_NULL)
  result=GC.@preserve z w edges begin
@@ -101,6 +108,9 @@ function npmle(fit::Result,z;weights=nothing,bins=nothing,threads=nothing,core_i
   finally
    out[]==C_NULL || ccall((:sb_result_free,libspecbunch),Cvoid,(Ptr{Cvoid},),out[])
   end
+ end
+ if any(x->x!==nothing,(tax_below,tax_above,net_below,net_above))
+  result.raw["eti"]=_eti_estimate(fit,z;tax_below,tax_above,net_below,net_above,weights=w,threads,npmle=result)
  end
  kind===nothing || _attach_figure!(result,kind,"npmle")
  result

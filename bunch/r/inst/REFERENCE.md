@@ -304,3 +304,57 @@ For friction transform `phi(t)=exp(-a*|t|-sigma^2*t^2/2)`, the density midpoint 
 `negative_shoulder` flags a negative inferred side; Saez is retained if the midpoint is positive, while continuous completion is unavailable. `zero_shoulder` flags a boundary shoulder: the reported continuous width is the shortest minimum-energy completion, whose minimizer is not unique. Refusal reasons are `insufficient_data` (fewer than two usable rows or unusable total weight), `friction_underflow` (the fitted band cannot be safely deconvolved), and `nonpositive_density` (the midpoint is nonpositive or the shoulder calculation is nonfinite). Invalid rate pairs/options raise input errors. No SE or confidence interval is computed.
 
 These are **finite-resolution CF functionals**: the midpoint omits the high-frequency remainder and the jump is a weighted band projection. Interpreting them as pointwise density shoulders requires local regularity and tail-approximation assumptions. Interpreting `e` structurally additionally requires the homogeneous isoelastic shift-and-bunch model and the supplied marginal incentives. Report the platform, mass-fit flags and the Gaussian/Voigt pair; neither completion rule resolves misspecified friction or first-stage mass bias.
+
+### NPMLE shoulder comparison (automatic)
+
+`npmle` accepts `basis="cubic"` (unchanged default) or `"linear"` in Python/R,
+`:cubic` or `:linear` in Julia, and `basis(cubic|linear)` in Stata. Both bases are
+clamped independently on each side. Their boundary coefficients are density
+heights, including the factor 1−B. The second-difference height penalty and BIC
+convention are the same for both bases; a linear basis is not an unpenalized fit.
+
+Supply the same tax or net-rate pair to `npmle(fit,z,...)` to obtain `result.eti`,
+which always includes both shoulder calculations. Alternatively use
+`eti.estimate(fit,z,...,npmle=result)` (Python), `eti(fit,z,...,npmle=result)` (R),
+or `ETI.estimate(fit,z;...,npmle=result)` (Julia). `npmle=True`/`TRUE`/`true`
+runs default cubic postestimation. If `fit` already has an attached NPMLE result
+from `mass(...,npmle=True)`, the ETI call automatically uses it. No comparison
+switch is required. Existing `saez` and `continuous` fields remain the transform
+results; `npmle.saez` and `npmle.continuous` hold the additional results, with
+`npmle.shoulder_left`, `npmle.shoulder_right`, `npmle.shoulder_source="npmle"`,
+`npmle.basis`, and `npmle.npmle_status`. The transform source is `shoulder_source="transform"`.
+The C0 rule is named `continuous` throughout the API. The outer status/refusal
+retains its existing meaning for the transform calculation; `npmle.status`
+describes the additional calculation, which can be available even if the
+transform calculation is unavailable. `npmle.npmle_status` separately reports
+the underlying spline solver status.
+
+Stata: run `specbunch npmle, basis(linear) taxbelow(.2) taxabove(.4)` after mass,
+or run NPMLE then `specbunch eti z, taxbelow(.2) taxabove(.4)`; an existing NPMLE
+fit is used automatically. `specbunch eti z, ... npmle` runs default cubic NPMLE
+first. Results are `e(saez_e)`, `e(continuous_e)` and the additional
+`e(npmle_saez_e)`, `e(npmle_continuous_e)` with NPMLE shoulders and diagnostics.
+Supplying rates to Stata NPMLE replaces active results with this ETI comparison.
+
+All elasticity arithmetic uses the C++ core and the same formulas as above,
+substituting the one-sided NPMLE limits. A supplied NPMLE result must match the
+mass, friction and kink; callers must also use the same sample and weights
+(the wrappers cannot authenticate the provenance of externally supplied results).
+An unconverged NPMLE is retained with its status flag, not silently certified.
+Neither method supplies an SE, CI, or coverage claim.
+
+`lambda_path` additionally reports `latent_left` and `latent_right` at every
+penalty. Among converged evaluated penalties with BIC no more than 2 above the
+selected BIC, `shoulder_sensitivity_left/right` is the largest absolute change
+from the selected limit divided by `max(selected_limit, 1e-12,
+1e-6*(selected_left+selected_right)/2)`. `shoulders_weak` flags either value above
+.25. `shoulder_lambda_count` counts these penalties; fewer than two or an
+unconverged selected solve sets `shoulders_inconclusive`. `lambda_at_grid_edge`
+is reported separately. These are sensitivity screens over the evaluated grid,
+not identification tests: passing does not prove well-determined pointwise
+limits. ETI comparisons propagate all three diagnostic flags and solver status.
+
+The C ABI option layouts remain unchanged: `sb_opts_npmle.reserved` now selects
+0 for cubic or 1 for linear; other values are invalid. The additive
+`sb_eti_shoulders(opts,left,right,out)` evaluates both completion rules from
+explicit limits. Existing cubic calculations and existing fixture files are unchanged.

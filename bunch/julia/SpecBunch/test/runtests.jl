@@ -97,3 +97,19 @@ end
     @test e.saez.e≈e.saez.d/log(1.34)
     @test_throws SpecBunch.CoreError SpecBunch.ETI.estimate(f,z;net_below=1.,net_above=1.)
 end
+
+@testset "NPMLE ETI shoulders" begin
+ z=Float64.((0:399).-200)./256
+ fixture=Dict(split(line,',')[1]=>parse.(Float64,split(line,',')[2:end]) for line in readlines(joinpath(@__DIR__,"eti_shoulders.csv"))[2:end])
+ f=SpecBunch.Result(0,Dict{String,Any}("B"=>.08,"sigma"=>.03,"a"=>0.,"kink"=>0.,"friction"=>"gaussian","window_lo"=>12.,"window_hi"=>45.),:mass)
+ for basis in (:linear,:cubic)
+  n=npmle(f,z;basis,plot=false,core_intervals=4,grid_points=25,lambda_points=3,refinement_points=3,threads=1,net_below=1.34,net_above=1.)
+  @test n.latent_left≈fixture[String(basis)][1] rtol=1e-8 atol=1e-12
+  @test n.eti.npmle.saez.e≈fixture[String(basis)][3] rtol=1e-8 atol=1e-12
+  @test n.eti.npmle.basis==String(basis)
+  @test n.eti.npmle.shoulder_left==n.latent_left==n.coefficients[1]
+  @test n.eti.npmle.saez.e≈2*f.B/(n.latent_left+n.latent_right)/log(1.34)
+  f.metadata[:npmle]=n
+  @test SpecBunch.ETI.estimate(f,z;net_below=1.34,net_above=1.).npmle.saez.e==n.eti.npmle.saez.e
+ end
+end

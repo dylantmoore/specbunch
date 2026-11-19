@@ -147,16 +147,23 @@ class NpmleResult:
         """
         from ._plot import draw
         return draw(self,kind,xlabel)
-    def __repr__(self):return f"NpmleResult(status={self.status!r}, lambda_={self.lambda_:.6g}, edf={self.edf:.6g})"
+    def __repr__(self):
+        text=f"NpmleResult(basis={self.basis!r}, status={self.status!r}, lambda_={self.lambda_:.6g}, edf={self.edf:.6g})"
+        return text+("\n"+repr(self.eti) if hasattr(self,"eti") else "")
 
 def npmle(fit,z,weights=None,bins=None,*,threads=None,core_intervals=12,grid_points=1001,
           exact_threshold=1000,max_iterations=200,lambda_min=.01,lambda_max=10000,
           lambda_points=15,refinement_points=9,histogram_width=None,
-          quadrature_tolerance=1e-9,optimality_tolerance=1e-7,plot="both"):
+          quadrature_tolerance=1e-9,optimality_tolerance=1e-7,plot="both",basis="cubic",
+          tax_below=None,tax_above=None,net_below=None,net_above=None):
     """Fit a convex penalised spline density with mass and friction held fixed.
 
+    basis="cubic" (default) or "linear" selects independent clamped sides.
+    Supplying tax_below/tax_above or net_below/net_above automatically attaches
+    result.eti with both transform and NPMLE shoulder calculations.
+
     Uses the complete usable sample, exact observations when n<=exact_threshold,
-    otherwise a histogram of width max(sigma,a)/20. Separate clamped cubic
+    otherwise a histogram of width max(sigma,a)/20. Separate clamped
     splines allow a weakly identified density jump. BIC selects lambda, with an
     interior refinement. Returns histogram and curves tables.
     Main options
@@ -183,6 +190,8 @@ def npmle(fit,z,weights=None,bins=None,*,threads=None,core_intervals=12,grid_poi
     edges=arrays(bins)[0] if bins is not None else None
     o=_Npmle();_core.fn("opts_npmle_init")(C.byref(o))
     o.B=fit.B;o.sigma=fit.sigma;o.a=fit.raw.get("a",0) if fit.raw["friction"]=="voigt" else 0;o.kink=fit.kink
+    if basis not in ("cubic","linear"):raise ValueError("basis must be cubic or linear")
+    o.reserved=int(basis=="linear")
     values=locals()
     for k in ("core_intervals","grid_points","exact_threshold","max_iterations","lambda_points","refinement_points"):
         setattr(o,k,integer(values[k]))
@@ -192,6 +201,8 @@ def npmle(fit,z,weights=None,bins=None,*,threads=None,core_intervals=12,grid_poi
     d=_Data(len(z),pointer(z),pointer(w))
     result=NpmleResult(*_core.call("npmle",d,o,pointer(edges),0 if edges is None else len(edges)),
                        xlabel=name if isinstance(name,str) and name else None)
+    if any(v is not None for v in (tax_below,tax_above,net_below,net_above)):
+        result.eti=eti.estimate(fit,z,tax_below,tax_above,net_below=net_below,net_above=net_above,weights=w,threads=threads,npmle=result)
     if kind is not None:_attach_figure(result,result.plot,kind,"npmle")
     return result
 
