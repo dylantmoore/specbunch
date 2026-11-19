@@ -2,6 +2,17 @@
 
 Bunching mass and buncher mean estimators in Python, R, Julia and Stata, sharing a deterministic C++ core.
 
+## Installation
+
+Nothing is on CRAN yet; this compiles the package from source (macOS: Xcode Command Line Tools; Windows: Rtools; Linux: `r-base-dev`):
+
+```r
+install.packages("remotes")
+remotes::install_github("dylantmoore/specbunch", subdir = "bunch/r")
+```
+
+Pre-release research software: read [Status and testing](https://github.com/dylantmoore/specbunch#status-and-testing) before relying on it. Cite: Moore, Dylan (2026). "Spectral Deconvolution: Applications to Bunching and Regression Discontinuity Designs." Working paper.
+
 Methods: `cosine` (default), `joint`. Friction: `gaussian` (default), `voigt`. Window rules: `tiered` (default), `first`. Every fit returns ranked sensitivity tables; coherent estimates carry diagnostic flags.
 
 See the repository `docs/REFERENCE.md` for every public option, field, flag and refusal reason, and `VENDOR.md` for source provenance. Build artifacts must be placed outside the source tree.
