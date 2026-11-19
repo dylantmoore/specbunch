@@ -106,6 +106,7 @@ static SEXP npmle_estimate(SEXP z,SEXP w,SEXP bins,SEXP opts) {
  o.lambda_max=option(opts,"lambda_max",o.lambda_max);
  o.quadrature_tolerance=option(opts,"quadrature_tolerance",o.quadrature_tolerance);
  o.optimality_tolerance=option(opts,"optimality_tolerance",o.optimality_tolerance);
+ o.reserved=(int)option(opts,"basis",0);
  SEXP xp=PROTECT(R_MakeExternalPtr(NULL,R_NilValue,R_NilValue));R_RegisterCFinalizerEx(xp,release,TRUE);
  sb_result* r=NULL;int rc=sb_npmle(&data,&o,edges,(size_t)nb,&r);R_SetExternalPtrAddr(xp,r);
  if(rc){release(xp);Rf_error("Core error %d: %s",rc,sb_last_error());}
@@ -140,7 +141,7 @@ static SEXP post_estimate(SEXP entry, SEXP z, SEXP x, SEXP w, SEXP opts) {
   o.window_hi=option(opts,"window_hi",o.window_hi);
   o.net_below=option(opts,"net_below",o.net_below);
   o.net_above=option(opts,"net_above",o.net_above);
-  sb_data d={(size_t)n,zz,ww};rc=sb_eti(&d,&o,&r);
+  sb_data d={(size_t)n,zz,ww};rc=Rf_asInteger(entry)==2 ? sb_eti_shoulders(&o,option(opts,"left",NAN),option(opts,"right",NAN),&r) : sb_eti(&d,&o,&r);
  }
  R_SetExternalPtrAddr(xp,r);if(rc){release(xp);Rf_error("Core error %d: %s",rc,sb_last_error());}
  SEXP out=PROTECT(extract(xp));UNPROTECT(2);return out;

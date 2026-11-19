@@ -12,8 +12,15 @@ constexpr double pi=3.1415926535897932384626433832795;
 inline double normal_pdf(double x){return std::exp(-.5*x*x)/std::sqrt(2*pi);}
 inline double normal_cdf(double x){return .5*std::erfc(-x/std::sqrt(2.));}
 struct SplineSide {
- vector<double> knots,area,poly; int intervals=0,count=0;
- explicit SplineSide(vector<double> k):knots(std::move(k)) {
+ vector<double> knots,area,poly; int intervals=0,count=0,active=4;
+ explicit SplineSide(vector<double> k,int degree=3):knots(std::move(k)) {
+  if(degree==1){
+   intervals=(int)knots.size()-1;count=intervals+1;active=2;area.assign(count,0.);
+   for(int i=0;i<intervals;++i){double h=knots[i+1]-knots[i];area[i]+=h/2;area[i+1]+=h/2;}
+   poly.assign(intervals*16,0.);
+   for(int i=0;i<intervals;++i){double h=knots[i+1]-knots[i];poly[i*16]=1/area[i];poly[i*16+1]=-1/(h*area[i]);poly[i*16+5]=1/(h*area[i+1]);}
+   return;
+  }
   intervals=(int)knots.size()-1; count=intervals+3;
   vector<double> t(intervals+7);
   for(int q=0;q<4;++q){t[q]=0;t[intervals+3+q]=knots.back();}
@@ -35,7 +42,7 @@ struct SplineSide {
  void latent(double x,double* pdf,double* cdf) const {
   std::fill(pdf,pdf+count,0);std::fill(cdf,cdf+count,0);
   for(int i=0;i<intervals;++i){double h=knots[i+1]-knots[i],v=std::clamp(x-knots[i],0.,h);
-   for(int j=0;j<4;++j){const double*c=&poly[(i*4+j)*4];
+   for(int j=0;j<active;++j){const double*c=&poly[(i*4+j)*4];
     cdf[i+j]+=v*(c[0]+v*(c[1]/2+v*(c[2]/3+v*c[3]/4)));
     if(x>=knots[i]&&(x<knots[i+1]||(i==intervals-1&&x==knots.back())))pdf[i+j]=std::max(0.,c[0]+v*(c[1]+v*(c[2]+v*c[3])));
    }
@@ -47,14 +54,14 @@ struct SplineSide {
   static constexpr int choose[5][5]={{1,0,0,0,0},{1,1,0,0,0},{1,2,1,0,0},{1,3,3,1,0},{1,4,6,4,1}};
   for(int i=0;i<intervals;++i){double lo=knots[i],hi=knots[i+1],h=hi-lo;
    if(x<lo-9*sigma)continue;
-   if(x>hi+9*sigma){for(int j=0;j<4;++j){const double*c=&poly[(i*4+j)*4];cdf[i+j]+=h*(c[0]+h*(c[1]/2+h*(c[2]/3+h*c[3]/4)));}continue;}
+   if(x>hi+9*sigma){for(int j=0;j<active;++j){const double*c=&poly[(i*4+j)*4];cdf[i+j]+=h*(c[0]+h*(c[1]/2+h*(c[2]/3+h*c[3]/4)));}continue;}
    double v0=(lo-x)/sigma,v1=(hi-x)/sigma,p0=normal_pdf(v0),p1=normal_pdf(v1),m[5];
    m[0]=v0>=0 ? normal_cdf(-v0)-normal_cdf(-v1) : normal_cdf(v1)-normal_cdf(v0);
    m[1]=p0-p1;for(int k=2;k<5;++k)m[k]=(k-1)*m[k-2]+std::pow(v0,k-1)*p0-std::pow(v1,k-1)*p1;
    double e[5]={},d=x-lo;
    for(int k=0;k<5;++k)for(int q=0;q<=k;++q)e[k]+=choose[k][q]*std::pow(d,k-q)*std::pow(sigma,q)*m[q];
    double edge=normal_cdf((x-hi)/sigma);
-   for(int j=0;j<4;++j){const double*c=&poly[(i*4+j)*4];double f=0,F=0;
+   for(int j=0;j<active;++j){const double*c=&poly[(i*4+j)*4];double f=0,F=0;
     for(int k=0;k<4;++k){f+=c[k]*e[k];F+=c[k]*(std::pow(h,k+1)*edge+e[k+1])/(k+1);}
     pdf[i+j]+=f;cdf[i+j]+=F;
    }
@@ -70,7 +77,7 @@ inline vector<double> make_knots(double core,double extreme,int intervals){
 }
 struct SplineBasis {
  SplineSide left,right;int count;vector<double> area;
- SplineBasis(vector<double> l,vector<double> r):left(std::move(l)),right(std::move(r)),count(left.count+right.count){area=left.area;area.insert(area.end(),right.area.begin(),right.area.end());}
+ SplineBasis(vector<double> l,vector<double> r,int degree=3):left(std::move(l),degree),right(std::move(r),degree),count(left.count+right.count){area=left.area;area.insert(area.end(),right.area.begin(),right.area.end());}
  void evaluate(double x,double sigma,double* pdf,double* cdf)const{
   left.gaussian(-x,sigma,pdf,cdf);
   for(int j=0;j<left.count;++j)cdf[j]=1-cdf[j];

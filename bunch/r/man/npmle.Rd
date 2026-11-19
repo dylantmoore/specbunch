@@ -6,8 +6,11 @@
       core_intervals = 12, grid_points = 1001, exact_threshold = 1000,
       max_iterations = 200, lambda_min = .01, lambda_max = 10000,
       lambda_points = 15, refinement_points = 9, histogram_width = NULL,
-      quadrature_tolerance = 1e-9, optimality_tolerance = 1e-7, plot = TRUE)}
+      quadrature_tolerance = 1e-9, optimality_tolerance = 1e-7, plot = TRUE, basis = "cubic", tax_below = NULL, tax_above = NULL,
+      net_below = NULL, net_above = NULL)}
 \arguments{
+\item{basis}{Clamped spline basis: "cubic" (default) or "linear".}
+\item{tax_below, tax_above, net_below, net_above}{Optional complete tax or net-rate pair; automatically attaches both ETI shoulder calculations.}
 \item{fit}{Coherent mass result supplying fixed mass, friction and kink.}
 \item{z}{Full running-variable sample.}
 \item{weights}{Optional positive observation weights.}

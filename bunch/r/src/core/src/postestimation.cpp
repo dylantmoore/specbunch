@@ -135,3 +135,22 @@ SB_API void sb_opts_eti_init(sb_opts_eti* o){if(!o)return;std::memset(o,0,sizeof
 SB_API int sb_nonbuncher_mean(const sb_data_xy* d,const sb_opts_nonbuncher_mean* o,sb_result** out){return sbc::guarded([&]{return sbpost::nonbuncher(d,o,out);});}
 SB_API int sb_eti(const sb_data* d,const sb_opts_eti* o,sb_result** out){return sbc::guarded([&]{return sbpost::elasticity(d,o,out);});}
 }
+
+extern "C" SB_API int sb_eti_shoulders(const sb_opts_eti* supplied,double left,double right,sb_result** out){
+ return sbc::guarded([&]{
+  if(!out)return sbc::fail(SBC_E_NULL,"result pointer is NULL");*out=nullptr;
+  if(!supplied)return sbc::fail(SBC_E_NULL,"options are required");
+  if(int rc=sbc::check_opts_header(supplied,8,SB_ABI_VERSION))return rc;
+  sb_opts_eti o;sb_opts_eti_init(&o);std::memcpy(&o,supplied,std::min<size_t>(sizeof o,supplied->struct_size));
+  if(!(o.B>0&&o.B<1&&o.net_below>o.net_above&&o.net_above>0)||!std::isfinite(o.B+o.net_below+o.net_above))return sbc::fail(SBC_E_INPUT,"invalid mass or net-of-tax rates");
+  auto result=std::make_unique<sbc::Result>();auto& r=*result;double q=std::log(o.net_below/o.net_above);
+  r.set("B",o.B);r.set("log_net_ratio",q);r.set("shoulder_left",left);r.set("shoulder_right",right);r.set("shoulder_midpoint",(left+right)/2);r.set("shoulder_jump",right-left);
+  r.sets("shoulder_source","npmle");r.sets("estimator","shift-and-complete with NPMLE limiting densities");r.sets("flags","");
+  for(auto name:{"saez.e","saez.d","continuous.e","continuous.d"})r.set(name,NAN);
+  std::string flags;sbpost::flag(r,"negative_shoulder",left<0||right<0,flags);sbpost::flag(r,"zero_shoulder",left==0||right==0,flags);r.sets("flags",flags);
+  if(!(left+right>0)||!std::isfinite(left+right))return sbpost::finish(result,out,"nonpositive_density");
+  double ds=2*o.B/(left+right);r.set("saez.d",ds);r.set("saez.e",ds/q);r.sets("saez.status","ok");
+  if(left>=0&&right>=0){double dc=3*o.B/(left+right+std::sqrt(left*right));r.set("continuous.d",dc);r.set("continuous.e",dc/q);r.sets("continuous.status","ok");}else r.sets("continuous.status","negative_shoulder");
+  return sbpost::finish(result,out);
+ });
+}

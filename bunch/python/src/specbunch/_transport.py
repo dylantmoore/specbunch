@@ -72,8 +72,11 @@ class Library:
 
     def call(self, name, data, opts, *extra):
         h = C.c_void_p()
+        rc = self.fn(name)(C.byref(data), C.byref(opts), *extra, C.byref(h))
+        return self.finish(rc,h)
+
+    def finish(self,rc,h):
         try:
-            rc = self.fn(name)(C.byref(data), C.byref(opts), *extra, C.byref(h))
             if rc:
                 raise CoreError(rc, self.fn("last_error")().decode())
             raw = {}

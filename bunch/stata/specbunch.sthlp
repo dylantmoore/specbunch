@@ -78,6 +78,8 @@ fixed-chunk execution. Structural interpretation requires homogeneous
 isoelastic shifting and the supplied marginal incentives; the shoulders are
 finite-resolution functionals. Report Gaussian/Voigt results and mass-fit flags.
 
+{p}NPMLE accepts {opt basis(cubic|linear)} and optional taxbelow()/taxabove() or netbelow()/netabove(). When rates are supplied, ETI always reports the transform and NPMLE shoulder pair. ETI also automatically uses an attached NPMLE, or fits one with {opt npmle}. Additional scalars use e(npmle_saez_e), e(npmle_continuous_e), and e(npmle_shoulder_left/right). Grid-edge, shoulders_weak, and shoulders_inconclusive diagnostics are reported; see REFERENCE.md for the BIC-nearby sensitivity definition. No confidence intervals are computed.{p_end}
+
 {title:Licence and citing}
 {pstd}Own code: MIT, Copyright (c) 2026 Dylan Moore. See specbunch_THIRD_PARTY_NOTICES.txt and supplied licences.
 {pstd}Please cite Moore, Dylan (2026). An Application of Euler's Formula to Bunching Methodology: Addressing Frictions via Spectral Deconvolution. Working paper. This title is a placeholder to be updated.

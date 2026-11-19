@@ -131,7 +131,8 @@ default_threads <- function() .Call(C_default_threads)
 npmle <- function(fit,z,weights=NULL,bins=NULL,threads=NULL,core_intervals=12,grid_points=1001,
                   exact_threshold=1000,max_iterations=200,lambda_min=.01,lambda_max=10000,
                   lambda_points=15,refinement_points=9,histogram_width=NULL,
-                  quadrature_tolerance=1e-9,optimality_tolerance=1e-7,plot=TRUE) {
+                  quadrature_tolerance=1e-9,optimality_tolerance=1e-7,plot=TRUE,basis="cubic",
+                  tax_below=NULL,tax_above=NULL,net_below=NULL,net_above=NULL) {
  if(!inherits(fit,"specbunch_mass")||fit$refused) stop("npmle requires a coherent mass result")
  kind <- npmle_plot_kind(plot);draw <- !is.null(kind) && (interactive() || !missing(plot))
  xlabel <- npmle_xlabel(substitute(z))
@@ -143,6 +144,8 @@ npmle <- function(fit,z,weights=NULL,bins=NULL,threads=NULL,core_intervals=12,gr
  for(k in c("core_intervals","grid_points","exact_threshold","max_iterations","lambda_points","refinement_points")) opts[[k]] <- scalar(values[[k]],k,TRUE,2147483647)
  for(k in c("lambda_min","lambda_max","quadrature_tolerance","optimality_tolerance")) opts[[k]] <- scalar(values[[k]],k)
  opts$histogram_width <- if(is.null(histogram_width)) 0 else scalar(histogram_width,"histogram_width")
+ if(length(basis)!=1L || !basis %in% c("cubic","linear")) stop("basis must be cubic or linear")
+ opts$basis <- as.integer(basis=="linear")
  ans <- .Call(C_npmle,z,weights,bins,opts);out <- ans[[2L]];out$raw <- ans[[2L]];out$status_code <- ans[[1L]];out$kinds <- ans[[3L]]
  for(prefix in c("histogram","curves","lambda_path")) {
   cols <- out$raw[startsWith(names(out$raw),paste0(prefix,"."))];names(cols) <- substring(names(cols),nchar(prefix)+2L)
@@ -151,12 +154,14 @@ npmle <- function(fit,z,weights=NULL,bins=NULL,threads=NULL,core_intervals=12,gr
  for(k in names(out$curves)) out[[k]] <- out$curves[[k]]
  out$xlabel <- xlabel
  class(out) <- "specbunch_npmle_result"
+ if(any(!vapply(list(tax_below,tax_above,net_below,net_above),is.null,logical(1)))) out$eti <- eti(fit,z,tax_below,tax_above,net_below,net_above,weights=weights,threads=threads,npmle=out)
  if(draw) plot.specbunch_npmle_result(out,kind)
  out
 }
 #' Display spline postestimation
 #' @export
 print.specbunch_npmle_result <- function(x,...) {
+ if(!is.null(x$eti)) print(x$eti)
  cat("NPMLE:",x$status,"; lambda =",x$lambda,"; EDF =",x$edf,"\n")
  cat("The latent density jump is weakly identified.\n");invisible(x)
 }

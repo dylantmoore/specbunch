@@ -18,6 +18,8 @@ if a.job in ('cores','fixtures'):
     if a.job=='fixtures':
         run('cmake','--build',b/'cores/bunch','--config','Release','--target','sb_test_joint_voigt')
         run(b/'cores/bunch'/('sb_test_joint_voigt.exe' if os.name=='nt' else 'sb_test_joint_voigt'))
+        run('cmake','--build',b/'cores/bunch','--config','Release','--target','sb_test_eti_shoulders')
+        run(b/'cores/bunch'/('sb_test_eti_shoulders.exe' if os.name=='nt' else 'sb_test_eti_shoulders'))
         run(sys.executable,'-B',r/'tests/xlang/generate.py','--bunch',b/'cores/bunch'/lib('specbunch'),'--root',b/'xlang/fixtures')
 elif a.job=='wheels':
     for f in families:
@@ -34,6 +36,8 @@ elif a.job=='wheel-test':
         import specbunch
         local=b/'native-oracle';(local/'py').mkdir(parents=True,exist_ok=True)
         def locate(mod,name):return next(Path(mod.__file__).parent.rglob(lib(name)))
+        run('cmake','--build',b/'cores/bunch','--config','Release','--target','sb_test_eti_shoulders')
+        run(b/'cores/bunch'/('sb_test_eti_shoulders.exe' if os.name=='nt' else 'sb_test_eti_shoulders'))
         run(sys.executable,'-B',r/'tests/xlang/generate.py','--bunch',locate(specbunch,'specbunch'),'--root',local/'xlang/fixtures')
         run(sys.executable,'-B',r/'tests/xlang/run_python.py','--root',local,'--worker','both')
 elif a.job=='stata':
@@ -45,6 +49,7 @@ elif a.job=='stata':
         run(sys.executable,'-B',r/'tests/no_stata/run.py','--host',b/'host'/lib('stata_host'),
             '--plugin',b/'stata'/name/a.platform/'core'/(name+'_'+a.platform+'.plugin'),
             '--fixtures',b/'xlang/fixtures','--family',f,'--output',b/(name+'-plugin.json'))
+    run(sys.executable,'-B',r/'tests/eti_shoulders/no_stata.py',b/'host'/lib('stata_host'),b/'stata/specbunch'/a.platform/'core'/('specbunch_'+a.platform+'.plugin'),r/'tests/eti_shoulders/expected.csv')
 elif a.job=='julia':
     j=b/'julia';os.environ.update(SB_JULIA_BUILD=str(j),JULIA_DEPOT_PATH=str(j/'depot'))
     for f in families:build(f+'/core',j/'build'/f)

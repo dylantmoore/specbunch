@@ -1,5 +1,6 @@
 #include "stplugin.h"
 #include "specbunch.h"
+#include "sbc_internal.hpp"
 #include <vector>
 #include <string>
 #include <sstream>
@@ -78,7 +79,7 @@ stata_call(int argc, char* argv[]) {
    local("bits",outbits); return 0;
   }
   if(op=="nonbuncher_mean" || op=="eti") {
-   if(argc!=11)throw std::runtime_error("invalid postestimation arguments");
+   if(argc!=11 && !(op=="eti" && argc==18))throw std::runtime_error("invalid postestimation arguments");
    pending.reset();int base=op=="nonbuncher_mean"?2:1,nv=SF_nvars();
    if(nv!=base&&nv!=base+1)throw std::runtime_error("wrong postestimation variable count");
    std::vector<std::vector<double>> cols(nv);
@@ -94,14 +95,25 @@ stata_call(int argc, char* argv[]) {
     o.B=real_argument(argv[1]);o.sigma=real_argument(argv[2]);o.a=real_argument(argv[3]);o.kink=real_argument(argv[4]);o.threads=std::stoi(argv[5]);
     o.window_lo=real_argument(argv[6]);o.window_hi=real_argument(argv[7]);o.net_below=real_argument(argv[8]);o.net_above=real_argument(argv[9]);o.integration_intervals=std::stoi(argv[10]);
     sb_data d{cols[0].size(),cols[0].data(),w};rc=sb_eti(&d,&o,&out);
+    if(!rc&&argc==18){
+     Result* extra=nullptr;rc=sb_eti_shoulders(&o,real_argument(argv[11]),real_argument(argv[12]),&extra);
+     if(!rc){auto& r=*reinterpret_cast<sbc::Result*>(out);auto& e=*reinterpret_cast<sbc::Result*>(extra);
+      for(auto& kv:e.scalars)r.set("npmle."+kv.first,kv.second);
+      for(auto& kv:e.strings)r.sets("npmle."+kv.first,kv.second);
+      r.set("npmle.lambda_at_grid_edge",real_argument(argv[13]));r.set("npmle.shoulders_weak",real_argument(argv[14]));r.set("npmle.shoulders_inconclusive",real_argument(argv[15]));
+      r.sets("npmle.basis",argv[16]);r.sets("npmle.fit_status",argv[17]);r.finish_names();
+     }
+     if(extra)sb_result_free(extra);
+    }
    }
    if(rc){if(out)sb_result_free(out);throw std::runtime_error(sb_last_error());}publish(out);return 0;
   }
   if(op=="npmle") {
-   if(argc!=18)throw std::runtime_error("invalid NPMLE plugin arguments");
+   if(argc!=18&&argc!=19)throw std::runtime_error("invalid NPMLE plugin arguments");
    pending.reset();int nv=SF_nvars();if(nv<1||nv>2)throw std::runtime_error("NPMLE expects the running variable and optional weights");
    std::vector<double> z,w;for(int i=SF_in1();i<=SF_in2();++i)if(SF_ifobs(i)){double v;check(SF_vdata(1,i,&v));z.push_back(SF_is_missing(v)?NAN:v);if(nv==2){check(SF_vdata(2,i,&v));w.push_back(SF_is_missing(v)?NAN:v);}}
    sb_opts_npmle o;sb_opts_npmle_init(&o);o.B=real_argument(argv[1]);o.sigma=real_argument(argv[2]);o.a=real_argument(argv[3]);o.kink=real_argument(argv[4]);o.threads=std::stoi(argv[5]);
+   if(argc==19){std::string basis=argv[18];if(basis!="cubic"&&basis!="linear")throw std::runtime_error("invalid basis");o.reserved=basis=="linear";}
    o.core_intervals=std::stoi(argv[6]);o.grid_points=std::stoi(argv[7]);o.exact_threshold=std::stoi(argv[8]);o.max_iterations=std::stoi(argv[9]);
    o.lambda_min=real_argument(argv[10]);o.lambda_max=real_argument(argv[11]);o.lambda_points=std::stoi(argv[12]);o.refinement_points=std::stoi(argv[13]);
    o.histogram_width=real_argument(argv[14]);o.quadrature_tolerance=real_argument(argv[15]);o.optimality_tolerance=real_argument(argv[16]);

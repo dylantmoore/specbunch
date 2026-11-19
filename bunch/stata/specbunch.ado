@@ -147,7 +147,7 @@ program define specbunch, eclass
     local running : word 1 of `inputs'
     ereturn local running_variable "`running'"
     ereturn local input_weight_exp "`exp'"
-    ereturn scalar kink = `kink' 
+    ereturn scalar kink = `kink'
     ereturn local policy "`policy'"
     ereturn local flags_text `"`e(str_flags_str)'"'
     capture local tier = string(e(tier))
@@ -300,13 +300,23 @@ end
 program define _specbunch_post, eclass
     version 14.1
     gettoken operation 0 : 0
-    syntax varlist(numeric min=1 max=2) [if] [in] [pweight fweight], [MASSfit(name) BUNCHERfit(name) MUb(string) SEMUb(real 0) BANDwidth(real .05) DEGree(integer 1) BINWidth(real .0025) TAXBelow(string) TAXAbove(string) NETBelow(string) NETAbove(string) INTegrationintervals(integer 200) Threads(integer 0)]
+    syntax varlist(numeric min=1 max=2) [if] [in] [pweight fweight], [MASSfit(name) BUNCHERfit(name) MUb(string) SEMUb(real 0) BANDwidth(real .05) DEGree(integer 1) BINWidth(real .0025) TAXBelow(string) TAXAbove(string) NETBelow(string) NETAbove(string) INTegrationintervals(integer 200) Threads(integer 0) NPMLE]
     local inputs `varlist'
     local nv : word count `inputs'
     if ("`operation'"=="nonbuncher_mean" & `nv'!=2) | ("`operation'"=="eti" & `nv'!=1) error 198
     if "`massfit'"!="" quietly estimates restore `massfit'
     if "`e(cmd)'"!="specbunch" | !inlist("`e(method)'","cosine","joint") error 301
     if e(core_status)!=0 error 498
+    if "`operation'"=="eti" & "`npmle'"!="" quietly _specbunch_npmle, noplot threads(`threads')
+    local npmle_tail
+    local has_np 0
+    if "`operation'"=="eti" & "`e(npmle_status)'"!="" {
+        local has_np 1
+        foreach key in latent_left latent_right lambda_at_grid_edge shoulders_weak shoulders_inconclusive {
+            local np_`key' : display %24.17g e(npmle_`key')
+        }
+        local npmle_tail `""`np_latent_left'" "`np_latent_right'" "`np_lambda_at_grid_edge'" "`np_shoulders_weak'" "`np_shoulders_inconclusive'" "`e(npmle_basis)'" "`e(npmle_status)'""'
+    }
     foreach key in B sigma kink window_lo window_hi {
         local `key' : display %24.17g e(`key')
     }
@@ -335,6 +345,7 @@ program define _specbunch_post, eclass
         }
         else if "`taxbelow'`taxabove'"!="" | "`netbelow'"=="" | "`netabove'"=="" error 198
         local tail `""`window_lo'" "`window_hi'" "`netbelow'" "`netabove'" "`integrationintervals'""'
+        local tail `"`tail' `npmle_tail'"'
     }
     local plat linux64
     if strpos(c(machine_type),"Mac") {
@@ -405,6 +416,10 @@ program define _specbunch_post, eclass
         display as text "Conditional standard error, not a confidence interval. Report the Gaussian/Voigt pair."
     }
     else display as text "ETI: Saez = " as result e(saez_e) as text "; continuous completion = " as result e(continuous_e)
+    if "`operation'"=="eti" & `has_np' {
+        display as text "NPMLE ETI: Saez = " as result e(npmle_saez_e) as text "; continuous = " as result e(npmle_continuous_e)
+        display as text "NPMLE diagnostics: grid edge = " e(npmle_lambda_at_grid_edge) "; weak shoulders = " e(npmle_shoulders_weak) "; inconclusive = " e(npmle_shoulders_inconclusive)
+    }
     display as text `"Flags: `e(flags_text)'"'
 end
 
@@ -415,7 +430,9 @@ program define _specbunch_npmle, eclass
         display as error "npmle requires a coherent mass result"
         exit 498
     }
-    syntax [, Bins(name) Threads(integer 0) COREintervals(integer 12) GRIDpoints(integer 1001) EXACTthreshold(integer 1000) MAXiterations(integer 200) LAMBDAmin(real .01) LAMBDAmax(real 10000) LAMBDApoints(integer 15) REFINEpoints(integer 9) HISTogramwidth(real 0) QUADraturetolerance(real 1e-9) OPTimalitytolerance(real 1e-7) NOPLOT PLOT(string) NAME(string asis) SAVing(string asis)]
+    syntax [, BASIS(string) TAXBelow(string) TAXAbove(string) NETBelow(string) NETAbove(string) Bins(name) Threads(integer 0) COREintervals(integer 12) GRIDpoints(integer 1001) EXACTthreshold(integer 1000) MAXiterations(integer 200) LAMBDAmin(real .01) LAMBDAmax(real 10000) LAMBDApoints(integer 15) REFINEpoints(integer 9) HISTogramwidth(real 0) QUADraturetolerance(real 1e-9) OPTimalitytolerance(real 1e-7) NOPLOT PLOT(string) NAME(string asis) SAVing(string asis)]
+    if "`basis'"=="" local basis cubic
+    if !inlist("`basis'","cubic","linear") error 198
     if "`plot'"=="" local plot both
     local plot = lower("`plot'")
     if !inlist("`plot'","both","pdf","cdf","none") {
@@ -424,7 +441,7 @@ program define _specbunch_npmle, eclass
     }
     if "`noplot'"!="" local plot none
     local z `e(running_variable)'
-    local wexp `"`e(input_weight_exp)'"' 
+    local wexp `"`e(input_weight_exp)'"'
     tempvar weight sample_use
     quietly generate byte `sample_use'=e(sample)
     if "`wexp'"!="" {
@@ -437,7 +454,7 @@ program define _specbunch_npmle, eclass
     local a 0
     if "`e(friction)'"=="voigt" local a : display %24.17g e(a)
     if "`bins'"=="" local bins _none
-    plugin call _specbunch_plugin `z' `wvar' if `sample_use', npmle "`B'" "`sigma'" "`a'" "`kink'" "`threads'" "`coreintervals'" "`gridpoints'" "`exactthreshold'" "`maxiterations'" "`lambdamin'" "`lambdamax'" "`lambdapoints'" "`refinepoints'" "`histogramwidth'" "`quadraturetolerance'" "`optimalitytolerance'" "`bins'"
+    plugin call _specbunch_plugin `z' `wvar' if `sample_use', npmle "`B'" "`sigma'" "`a'" "`kink'" "`threads'" "`coreintervals'" "`gridpoints'" "`exactthreshold'" "`maxiterations'" "`lambdamin'" "`lambdamax'" "`lambdapoints'" "`refinepoints'" "`histogramwidth'" "`quadraturetolerance'" "`optimalitytolerance'" "`bins'" "`basis'"
     tempname scalars vectors
     local ns : word count `scalar_names'
     matrix `scalars'=J(1,`ns',.)
@@ -463,6 +480,15 @@ program define _specbunch_npmle, eclass
     display as text "NPMLE: `e(npmle_status)'; lambda = " as result e(npmle_lambda) as text "; EDF = " as result e(npmle_edf)
     display as text "The latent density jump is weakly identified."
     if "`plot'"!="none" _specbunch_npmle_plot, kind(`plot') name(`name') saving(`saving')
+    if "`taxbelow'`taxabove'`netbelow'`netabove'"!="" {
+        local rates
+        foreach key in taxbelow taxabove netbelow netabove {
+            if "``key''"!="" local rates `rates' `key'(``key'')
+        }
+        local npweight
+        if "`wvar'"!="" local npweight [pw=`wvar']
+        _specbunch_post eti `z' `npweight' if `sample_use', `rates' threads(`threads')
+    }
 end
 
 // Density view: data histogram, fitted observed density (bunchers included) and fitted
