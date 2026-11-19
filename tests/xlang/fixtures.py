@@ -71,6 +71,11 @@ def public(case, arrays, threads=1):
         import specrd
         return specrd.rd(arrays["w"], arrays["d"], arrays["y"], weights=weights, **opts)
     import specbunch
+    if entry in ("nonbuncher_mean","eti"):
+        raw=dict(case["fixed_mass"]);raw["friction"]="voigt" if raw.get("a",0)>0 else "gaussian"
+        fit=specbunch.Result(0,raw,"mass");fit.kink=raw.get("kink",0)
+        if entry=="eti":return specbunch.eti.estimate(fit,arrays["z"],weights=weights,**opts)
+        return specbunch.nonbuncher_mean(arrays["z"],arrays["x"],fit,weights=weights,**opts)
     if entry == "npmle":
         fit=specbunch.mass(arrays["z"],weights=weights,threads=threads,**case["mass_options"])
         return specbunch.npmle(fit,arrays["z"],weights=weights,**opts)

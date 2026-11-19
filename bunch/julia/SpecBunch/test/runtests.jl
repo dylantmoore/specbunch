@@ -81,3 +81,19 @@ end
     @test npmle(fit,z;threads=1,grid_points=51,lambda_points=3,refinement_points=3,plot=false).figure===nothing
     @test_throws ArgumentError npmle(fit,z;plot=:hist)
 end
+
+@testset "Local nonbuncher mean and ETI" begin
+    z=collect(range(-.5,.5,length=5000));x=fill(.4,length(z))
+    f=SpecBunch.Result(0,Dict{String,Any}("B"=>.08,"sigma"=>.03,"a"=>0.,"friction"=>"gaussian","window_lo"=>12.,"window_hi"=>45.),:mass)
+    f.metadata[:kink]=0.
+    r=nonbuncher_mean(z,x,f;mu_b=.4)
+    @test !r.refused
+    @test abs(r.m_NB-.4)<1e-10
+    @test length(r.local_fit.center)==40
+    @test r.pi_kink>0
+    @test abs(nonbuncher_mean(z,x,f;mu_b=.4,degree=2,threads=4).m_NB-.4)<1e-10
+    e=SpecBunch.ETI.estimate(f,z;net_below=1.34,net_above=1.)
+    @test !e.refused
+    @test e.saez.e≈e.saez.d/log(1.34)
+    @test_throws SpecBunch.CoreError SpecBunch.ETI.estimate(f,z;net_below=1.,net_above=1.)
+end

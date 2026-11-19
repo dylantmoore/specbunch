@@ -41,3 +41,5 @@ fixture, actual/reference value, and relative difference. Selected-answer fixtur
 flips are counted explicitly. NPMLE curves have a looser reporting tolerance of
 relative 1e-6 or absolute 1e-8 (the larger allowance); exceeding it is reported,
 not a cross-platform failure. These tolerances do not change estimator numerics.
+
+The selected-answer tolerance also covers the nonbuncher mean `m_NB` and ETI `saez.e/d` and `continuous.e/d`; rule status, refusal reasons and flags must agree. Other postestimation diagnostics remain reported differences.

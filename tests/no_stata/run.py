@@ -30,14 +30,18 @@ for case in read_json(a.fixtures/'manifest.json.gz')['cases']:
     if a.case and case['id']!=a.case:continue
     if (case['entry']=='rd') != (a.family=='rd'):continue
     arrays=load_arrays(a.fixtures,case)
-    keys=['w','d','y'] if a.family=='rd' else (['z','x'] if case['entry']=='bmean' else ['z'])
+    keys=['w','d','y'] if a.family=='rd' else (['z','x'] if case['entry'] in ('bmean','nonbuncher_mean') else ['z'])
     if 'weights' in arrays:keys+=['weights']
     h.host_data(len(arrays[keys[0]]),len(keys))
     for j,k in enumerate(keys):h.host_column(j,arrays[k].ctypes.data_as(ct.POINTER(ct.c_double)))
     first_actual=None
     for t in (1,2,4,8,0):
         o=case['options']; entry=case['entry'].removeprefix('mass_')
-        if entry=='npmle':
+        if entry in ('nonbuncher_mean','eti'):
+            f=case['fixed_mass']
+            tail=[o.get('mu_b'),o.get('se_mu_b',0),o.get('bandwidth',.05),o.get('degree',1),o.get('bin_width',.0025)] if entry=='nonbuncher_mean' else [f['window_lo'],f['window_hi'],o['net_below'],o['net_above'],o.get('integration_intervals',200)]
+            call(entry,f['B'],f['sigma'],f['a'],f['kink'],t,*tail)
+        elif entry=='npmle':
             mo=case['mass_options'];kink=mo.get('kink',0)
             call('run',('joint_voigt' if mo['friction']=='voigt' else 'gaussian_jump') if mo['method']=='joint' else mo['friction'],kink,t,1,0,1,1,5000,31250,2,1,499)
             names=macro('scalar_names').split();h.host_matrix(1,len(names));call('fetch','scalars','out');mass=dict(zip(names,numbers('bits')));call('release')

@@ -38,6 +38,11 @@ load_case <- function(case) {
 }
 public <- function(case,a,threads) {
   opts <- c(case$options,list(threads=threads))
+  if(case$entry %in% c("nonbuncher_mean","eti")) {
+    fit <- case$fixed_mass;fit$refused <- FALSE;fit$friction <- if(fit$a>0) "voigt" else "gaussian";class(fit) <- "specbunch_mass"
+    if(case$entry=="eti") return(do.call(specbunch::eti,c(list(fit=fit,z=a$z,weights=a$weights),opts)))
+    return(do.call(specbunch::nonbuncher_mean,c(list(z=a$z,x=a$x,mass_fit=fit,weights=a$weights),opts)))
+  }
   if(case$entry=="npmle") {
     fit <- do.call(specbunch::mass,c(list(z=a$z,weights=a$weights,threads=threads),case$mass_options))
     return(do.call(specbunch::npmle,c(list(fit=fit,z=a$z,weights=a$weights),opts)))

@@ -19,3 +19,5 @@ By default `npmle` draws two views of the fit next to the data. The density view
 Run local tests with `python -m pytest tests`; expensive checks marked `slow` are skipped by default. Use `--runslow` (or `SPECBUNCH_RUN_SLOW=1`) to include them. Full wheel CI enables them on pushes to `main` and manual dispatches.
 
 Weighted nonlinear least squares of the empirical cosine transform in levels, with fixed inverse-variance weights from the transform's own variance, solved by Gauss–Newton/Newton. The joint method also fits sine; the companions are log-linear OLS/LAD.
+
+Postestimation also provides `nonbuncher_mean` (a local characteristic mean with the buncher mean fixed) and ETI by the Saez trapezoid with continuous completion. See the public reference for language-specific syntax, conditional SE interpretation and flags.

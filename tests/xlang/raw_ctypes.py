@@ -21,6 +21,10 @@ class RDOpts(ct.Structure):
                 ("reserved0", ct.c_int32), ("seed", ct.c_uint64)]
 class NpmleOpts(ct.Structure):
     _fields_ = [("struct_size",ct.c_uint32),("abi_version",ct.c_uint32)]+[(k,ct.c_int32) for k in ("threads","core_intervals","grid_points","exact_threshold","max_iterations","lambda_points","refinement_points","reserved")]+[(k,ct.c_double) for k in ("B","sigma","a","kink","histogram_width","lambda_min","lambda_max","quadrature_tolerance","optimality_tolerance")]
+class NonbuncherOpts(ct.Structure):
+    _fields_=[("struct_size",ct.c_uint32),("abi_version",ct.c_uint32),("threads",ct.c_int32),("degree",ct.c_int32)]+[(k,ct.c_double) for k in ("B","sigma","a","kink","mu_b","se_mu_b","bandwidth","bin_width")]
+class EtiOpts(ct.Structure):
+    _fields_=[("struct_size",ct.c_uint32),("abi_version",ct.c_uint32),("threads",ct.c_int32),("integration_intervals",ct.c_int32)]+[(k,ct.c_double) for k in ("B","sigma","a","kink","window_lo","window_hi","net_below","net_above")]
 POLICIES = {"tiered":0,"first":2}
 
 class Direct:
@@ -42,7 +46,9 @@ class Direct:
             ("mass_voigt", MassData, MassOpts, "opts_mass_init"),
             ("mass_gaussian_jump", MassData, MassOpts, "opts_mass_init"),
             ("mass_joint_voigt", MassData, MassOpts, "opts_mass_init"),
-            ("bmean", MeanData, MeanOpts, "opts_bmean_init")]
+            ("bmean", MeanData, MeanOpts, "opts_bmean_init"),
+            ("nonbuncher_mean",MeanData,NonbuncherOpts,"opts_nonbuncher_mean_init"),
+            ("eti",MassData,EtiOpts,"opts_eti_init")]
         if not rd:
             self.f("opts_npmle_init").argtypes=[ct.POINTER(NpmleOpts)]
             self.f("npmle").argtypes=[ct.POINTER(MassData),ct.POINTER(NpmleOpts),P,ct.c_size_t,ct.POINTER(ct.c_void_p)]
@@ -65,6 +71,9 @@ class Direct:
         elif entry == "npmle":
             data = MassData(len(a["z"]),ptr("z"),ptr("weights"))
             opts=NpmleOpts();self.f("opts_npmle_init")(ct.byref(opts))
+        elif entry in ("nonbuncher_mean","eti"):
+            data=MeanData(len(a["z"]),ptr("z"),ptr("x"),ptr("weights")) if entry=="nonbuncher_mean" else MassData(len(a["z"]),ptr("z"),ptr("weights"))
+            opts=NonbuncherOpts() if entry=="nonbuncher_mean" else EtiOpts();self.f("opts_"+entry+"_init")(ct.byref(opts))
         elif entry == "bmean":
             data = MeanData(len(a["z"]), ptr("z"), ptr("x"), ptr("weights"))
             opts = MeanOpts(); self.f("opts_bmean_init")(ct.byref(opts))

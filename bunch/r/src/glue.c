@@ -111,7 +111,42 @@ static SEXP npmle_estimate(SEXP z,SEXP w,SEXP bins,SEXP opts) {
  if(rc){release(xp);Rf_error("Core error %d: %s",rc,sb_last_error());}
  SEXP out=PROTECT(extract(xp));UNPROTECT(2);return out;
 }
+static SEXP post_estimate(SEXP entry, SEXP z, SEXP x, SEXP w, SEXP opts) {
+ R_xlen_t n=XLENGTH(z);const double* zz=column(z,n,0);const double* ww=column(w,n,1);
+ SEXP xp=PROTECT(R_MakeExternalPtr(NULL,R_NilValue,R_NilValue));R_RegisterCFinalizerEx(xp,release,TRUE);
+ sb_result* r=NULL;int rc;
+ if(Rf_asInteger(entry)==0){
+  sb_opts_nonbuncher_mean o;sb_opts_nonbuncher_mean_init(&o);
+  o.threads=(int)option(opts,"threads",o.threads);
+  o.degree=(int)option(opts,"degree",o.degree);
+  o.B=option(opts,"B",o.B);
+  o.sigma=option(opts,"sigma",o.sigma);
+  o.a=option(opts,"a",o.a);
+  o.kink=option(opts,"kink",o.kink);
+  o.mu_b=option(opts,"mu_b",o.mu_b);
+  o.se_mu_b=option(opts,"se_mu_b",o.se_mu_b);
+  o.bandwidth=option(opts,"bandwidth",o.bandwidth);
+  o.bin_width=option(opts,"bin_width",o.bin_width);
+  sb_data_xy d={(size_t)n,zz,column(x,n,0),ww};rc=sb_nonbuncher_mean(&d,&o,&r);
+ }else{
+  sb_opts_eti o;sb_opts_eti_init(&o);
+  o.threads=(int)option(opts,"threads",o.threads);
+  o.integration_intervals=(int)option(opts,"integration_intervals",o.integration_intervals);
+  o.B=option(opts,"B",o.B);
+  o.sigma=option(opts,"sigma",o.sigma);
+  o.a=option(opts,"a",o.a);
+  o.kink=option(opts,"kink",o.kink);
+  o.window_lo=option(opts,"window_lo",o.window_lo);
+  o.window_hi=option(opts,"window_hi",o.window_hi);
+  o.net_below=option(opts,"net_below",o.net_below);
+  o.net_above=option(opts,"net_above",o.net_above);
+  sb_data d={(size_t)n,zz,ww};rc=sb_eti(&d,&o,&r);
+ }
+ R_SetExternalPtrAddr(xp,r);if(rc){release(xp);Rf_error("Core error %d: %s",rc,sb_last_error());}
+ SEXP out=PROTECT(extract(xp));UNPROTECT(2);return out;
+}
 static const R_CallMethodDef calls[] = {
+  {"C_post", (DL_FUNC) &post_estimate, 5},
   {"C_npmle", (DL_FUNC) &npmle_estimate, 4}, {"C_estimate", (DL_FUNC) &estimate, 5}, {"C_info", (DL_FUNC) &info, 0}, {"C_default_threads", (DL_FUNC) &default_threads, 0}, {NULL,NULL,0}
 };
 void R_init_specbunch(DllInfo *dll) {

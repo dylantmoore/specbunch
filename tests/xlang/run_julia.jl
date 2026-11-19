@@ -54,6 +54,12 @@ function public_call(case,a,threads)
     opts=Dict(Symbol(k)=>v for (k,v) in pairs(case.options))
     opts[:threads]=threads
     weights=get(a,"weights",nothing)
+    if case.entry in ("nonbuncher_mean","eti")
+        raw=Dict{String,Any}(String(k)=>v for (k,v) in pairs(case.fixed_mass));raw["friction"]=raw["a"]>0 ? "voigt" : "gaussian"
+        fit=SpecBunch.Result(0,raw,:mass);fit.metadata[:kink]=raw["kink"]
+        case.entry=="eti" && return SpecBunch.ETI.estimate(fit,a["z"];weights,opts...)
+        return SpecBunch.nonbuncher_mean(a["z"],a["x"],fit;weights,opts...)
+    end
     if case.entry == "npmle"
         mo=Dict(Symbol(k)=>(k==:method ? Symbol(v) : v) for (k,v) in pairs(case.mass_options))
         fit=SpecBunch.mass(a["z"];weights,threads,mo...)
@@ -66,7 +72,7 @@ end
 bits(x)=string(reinterpret(UInt64,Float64(x));base=16,pad=16)
 function compare(r,e)
     n=0
-    (r isa SpecBunch.NpmleResult ? r.status_code : r.status) == e.status || error("handle status mismatch")
+    (r isa Union{SpecBunch.NpmleResult,SpecBunch.PostestimationResult} ? r.status_code : r.status) == e.status || error("handle status mismatch")
     n+=1
     expected=Set(String(k) for kind in (:scalars,:vectors,:strings) for k in keys(e[kind]))
     Set(keys(r.raw)) == expected || error("named output key mismatch")

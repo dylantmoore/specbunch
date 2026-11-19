@@ -12,8 +12,8 @@ EXACT_FIELDS = {'status', 'tier', 'flags', 'fit_converged', 'coherent_values',
                 'distribution_check_inconclusive', 'residual_cdf_inconsistent', 'poor_fit'}
 # Endpoints identify the selected window and must agree exactly, as do decisions.
 EXACT_FIELDS |= {'window_lo', 'window_hi', 'band_lo', 'band_hi', 't_lo', 't_hi'}
-ESTIMATES = {'B', 'sigma', 'mu', 'tau'}
-STRINGS = {'reason', 'refusal_reason', 'flags', 'flags_str', 'status'}
+ESTIMATES = {'B', 'sigma', 'mu', 'tau', 'm_NB', 'saez.e', 'saez.d', 'continuous.e', 'continuous.d'}
+STRINGS = {'reason', 'refusal_reason', 'flags', 'flags_str', 'status', 'saez.status', 'continuous.status'}
 
 
 def close(x, y, rtol=1e-8, atol=1e-12):

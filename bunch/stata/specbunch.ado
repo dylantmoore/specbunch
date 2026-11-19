@@ -2,6 +2,10 @@
 program define specbunch, eclass
     version 14.1
     gettoken subcmd 0 : 0, parse(" ,")
+    if inlist("`subcmd'","nonbuncher_mean","eti") {
+        _specbunch_post `subcmd' `0'
+        exit
+    }
     if "`subcmd'" == "npmle" {
         _specbunch_npmle `0'
         exit
@@ -293,6 +297,117 @@ end
 
 // These helpers only transport C results. st_matrix supplies the legacy
 // r1...rN/c1 labels; compatible existing matrices avoid repeated allocation.
+program define _specbunch_post, eclass
+    version 14.1
+    gettoken operation 0 : 0
+    syntax varlist(numeric min=1 max=2) [if] [in] [pweight fweight], [MASSfit(name) BUNCHERfit(name) MUb(string) SEMUb(real 0) BANDwidth(real .05) DEGree(integer 1) BINWidth(real .0025) TAXBelow(string) TAXAbove(string) NETBelow(string) NETAbove(string) INTegrationintervals(integer 200) Threads(integer 0)]
+    local inputs `varlist'
+    local nv : word count `inputs'
+    if ("`operation'"=="nonbuncher_mean" & `nv'!=2) | ("`operation'"=="eti" & `nv'!=1) error 198
+    if "`massfit'"!="" quietly estimates restore `massfit'
+    if "`e(cmd)'"!="specbunch" | !inlist("`e(method)'","cosine","joint") error 301
+    if e(core_status)!=0 error 498
+    foreach key in B sigma kink window_lo window_hi {
+        local `key' : display %24.17g e(`key')
+    }
+    local a 0
+    if "`e(friction)'"=="voigt" local a : display %24.17g e(a)
+    if "`operation'"=="nonbuncher_mean" {
+        if "`buncherfit'"!="" {
+            if "`mub'"!="" error 198
+            quietly estimates restore `buncherfit'
+            if "`e(cmd)'"!="specbunch" | "`e(method)'"!="buncher_mean" error 301
+            if e(core_status)!=0 | e(kink)!=real("`kink'") error 498
+            local mub : display %24.17g e(mu)
+            local semub : display %24.17g e(se)
+        }
+        if "`mub'"=="" {
+            display as error "buncherfit() or mub() is required"
+            exit 198
+        }
+        local tail `""`mub'" "`semub'" "`bandwidth'" "`degree'" "`binwidth'""'
+    }
+    else {
+        if "`netbelow'`netabove'"=="" {
+            if "`taxbelow'"=="" | "`taxabove'"=="" error 198
+            local netbelow : display %24.17g (1-real("`taxbelow'"))
+            local netabove : display %24.17g (1-real("`taxabove'"))
+        }
+        else if "`taxbelow'`taxabove'"!="" | "`netbelow'"=="" | "`netabove'"=="" error 198
+        local tail `""`window_lo'" "`window_hi'" "`netbelow'" "`netabove'" "`integrationintervals'""'
+    }
+    local plat linux64
+    if strpos(c(machine_type),"Mac") {
+        local plat macintel64
+        if strpos(c(machine_type),"Apple Silicon") local plat macarm64
+    }
+    else if c(os)=="Windows" local plat win64
+    capture program _specbunch_plugin, plugin using("specbunch_`plat'.plugin")
+    if _rc!=0 & _rc!=110 exit _rc
+    tempvar wt
+    if "`weight'"!="" {
+        quietly generate double `wt' `exp'
+        local wvar `wt'
+    }
+    capture noisily plugin call _specbunch_plugin `inputs' `wvar' `if' `in', `operation' "`B'" "`sigma'" "`a'" "`kink'" "`threads'" `tail'
+    if _rc {
+        local rc=_rc
+        ereturn clear
+        exit `rc'
+    }
+    ereturn clear
+    tempname S
+    local ns : word count `scalar_names'
+    matrix `S'=J(1,`ns',.)
+    plugin call _specbunch_plugin, fetch scalars `S'
+    local scalar_bits `bits'
+    if `core_status'==0 {
+        tempname coefficient
+        local target m_NB
+        if "`operation'"=="eti" local target saez.e
+        local idx : list posof "`target'" in scalar_names
+        matrix `coefficient'=(`S'[1,`idx'])
+        local label=subinstr("`target'",".","_",.)
+        matrix colnames `coefficient'=`label'
+        ereturn post `coefficient'
+    }
+    local i 0
+    foreach key of local scalar_names {
+        local ++i
+        local name = subinstr("`key'", ".", "_", .)
+        ereturn scalar `name' = `S'[1,`i']
+    }
+    ereturn scalar core_status = `core_status'
+    ereturn local scalar_names "`scalar_names'"
+    ereturn local scalar_bits "`scalar_bits'"
+    ereturn local vector_names "`vector_names'"
+    ereturn local string_names "`string_names'"
+    // One allocation and one plugin transfer; no ado per-column matrix work.
+    local nvectors : word count `vector_names'
+    if `nvectors' > 0 {
+        tempname vectors
+        mata: _specbunch_vector_allocate(st_local("vectors"))
+        plugin call _specbunch_plugin, fetch_vectors `vectors'
+        mata: _specbunch_vector_post(st_local("vectors"))
+    }
+    local i 0
+    foreach key of local string_names {
+        local ++i
+        local name = subinstr("`key'", ".", "_", .)
+        ereturn local str_`name' `"`str`i''"'
+    }
+    plugin call _specbunch_plugin, release
+    ereturn local cmd "specbunch"
+    ereturn local method "`operation'"
+    ereturn local flags_text `"`e(str_flags)'"'
+    if "`operation'"=="nonbuncher_mean" {
+        display as text "Nonbuncher mean: " as result e(m_NB) as text "; SE: " as result e(se)
+        display as text "Conditional standard error, not a confidence interval. Report the Gaussian/Voigt pair."
+    }
+    else display as text "ETI: Saez = " as result e(saez_e) as text "; continuous completion = " as result e(continuous_e)
+    display as text `"Flags: `e(flags_text)'"'
+end
+
 program define _specbunch_npmle, eclass
     version 14.1
     if "`e(cmd)'"!="specbunch" | !inlist("`e(method)'","cosine","joint") error 301
@@ -489,6 +604,19 @@ void _specbunch_vector_post(string scalar source)
         _specbunch_put_matrix("e(transform)",values[|1,1\n,cols(values)|][,candidates])
         st_matrixcolstripe("e(transform)",(J(nc,1,""),candidate_names'))
     }
+    nc=0; candidates=J(1,cols(keys),0); candidate_names=J(1,cols(keys),"")
+    for(j=1;j<=cols(keys);j++) {
+        if(substr(keys[j],1,10)=="local_fit." & strtoreal(st_local("len"+strofreal(j)))>0) {
+            nc++; candidates[nc]=j; candidate_names[nc]=substr(keys[j],11,.)
+        }
+    }
+    if(nc>0) {
+        candidates=candidates[|1\nc|]; candidate_names=candidate_names[|1\nc|]
+        n=strtoreal(st_local("len"+strofreal(candidates[1])))
+        _specbunch_put_matrix("e(local_fit)",values[|1,1\n,cols(values)|][,candidates])
+        st_matrixcolstripe("e(local_fit)",(J(nc,1,""),candidate_names'))
+    }
+
 }
 void _specbunch_put_matrix(string scalar target, real matrix value)
 {

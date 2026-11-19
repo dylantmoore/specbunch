@@ -227,3 +227,80 @@ All four method/friction combinations are supported. For symmetric Voigt frictio
 The joint Voigt solver profiles the two linear coefficients (B and the scaled jump) exactly, then uses constrained Gauss–Newton steps with line search for nonnegative a and s2, checking both friction boundaries. Ranked windows use the joint Gaussian frequency-grid and visibility-extension design: at least 11 frequencies, a pilot-scaled spacing of 0.05 from 0.2 to an initial upper bound of 4, extended up to 8 when signal remains visible. Its fit test uses 499 deterministic sign-multiplier draws, refitting the joint model and comparing the maximum standardized cosine/sine residual. Passing windows are ranked by length then lower endpoint; remaining windows by descending fit p-value, length, then lower endpoint. The public tiered/first rules then choose a coherent answer.
 
 Joint fits are unweighted. With Voigt friction, coherence requires convergence, 0<B<1, a>=0, s2>=0 and sigma_eq=a+sqrt(a*a+s2)>0. Both Voigt methods apply only the poor_fit screen; Gaussian distribution-shape checks remain not_evaluated even with check_all_windows=True. A coherent estimate failing the fit test is returned with poor_fit. Standard errors use inverse Gauss–Newton information, conditioning on the active friction boundary when a parameter is zero.
+
+## Nonbuncher mean at the kink
+
+`nonbuncher_mean` estimates the mean of a characteristic among nonbunchers at the kink using the observed local mixture `E[X|z] = pi(z)*mu_b + (1-pi(z))*m_NB(z)`. The buncher mean `mu_b` is fixed at the cosine-ratio `buncher_mean` estimate or a supplied value. The buncher share depends on the mass fit's Gaussian or Voigt friction law: **report the Gaussian and Voigt pair**.
+
+Python: `specbunch.nonbuncher_mean(z, x, mass_fit, buncher_mean_fit=None, *, mu_b=None, se_mu_b=0, kink=None, weights=None, bandwidth=.05, degree=1, bin_width=.0025, threads=None)`.
+R: `nonbuncher_mean(z, x, mass_fit, buncher_mean_fit=NULL, mu_b=NULL, se_mu_b=0, kink=NULL, weights=NULL, bandwidth=.05, degree=1, bin_width=.0025, threads=NULL)`.
+Julia: `nonbuncher_mean(z, x, mass_fit, buncher_mean_fit=nothing; mu_b=nothing, se_mu_b=0, kink=nothing, weights=nothing, bandwidth=.05, degree=1, bin_width=.0025, threads=nothing)`.
+Stata: `specbunch nonbuncher_mean z x [if] [in] [pw=weight], massfit(stored_mass) buncherfit(stored_mean) bandwidth(.05) degree(1)`; alternatively supply `mub(#) semub(#)` instead of `buncherfit()`, with advanced `binwidth(.0025) threads(#)`. Store first-stage fits with `estimates store`; omitted `massfit()` uses the current coherent mass result. The command replaces the active estimation results, and returns `e(m_NB)`, `e(se)`, `e(pi_kink)` and `e(local_fit)` with column names.
+
+### Main options
+
+| Option | Meaning |
+|---|---|
+| `z`, `x` | Equal-length running-variable and characteristic vectors; `z` is already in log units and is not logged by the package. |
+| `mass_fit` | A coherent mass result fixes the atom mass and friction law; use the same population, weights and coordinate system for all stages. |
+| `buncher_mean_fit` | A coherent cosine-ratio result fixes `mu_b` and supplies its SE; its kink must match the mass fit. |
+| `mu_b`, `se_mu_b` | An explicit fixed buncher mean and its nonnegative SE, used instead of `buncher_mean_fit`; a zero SE treats the mean as known. |
+| `kink` | The log-coordinate kink, inferred from the mass result when omitted and required to match that result when supplied. |
+| `weights` | Positive observation weights, filtered jointly with finite `z` and `x`; all usable rows contribute to density normalization. |
+| `bandwidth` | The triangular-kernel half-width in log units, default `.05`, chosen as a declared local sensitivity setting rather than an automatic optimum. |
+| `degree` | `1` fits a local line and `2` fits a local quadratic as a sensitivity check, not a bias-corrected confidence interval. |
+
+### Advanced (numerical settings)
+
+`bin_width=.0025` sets bins anchored on the kink; the core smooths observed bin density minus the fixed atom density by unweighted least squares on `1, z-kink, (z-kink)^2, friction_cdf(z-kink)-.5` within `max(bandwidth,.10)`. Positive-weight bins enter the density smoother; an estimated nonbuncher density at or below `1e-12` uses that floor and is flagged. Bin-average atom probabilities divided by smoothed bin density give `pi`. The local characteristic regression uses bin weight times `max(0,1-|z-kink|/bandwidth)` and fixes the buncher mean. `threads` follows the package convention; local regressions and binning use fixed-order serial sums.
+
+Gaussian and pure-Cauchy bin probabilities are analytic. Mixed Voigt probabilities integrate the Gaussian expectation of the Cauchy CDF over ±10 Gaussian SDs, doubling Simpson's grid from 2,000 through 64,000 intervals until successive-grid error divided by 15 is at most `1e-11`; omitted Gaussian tail probability is below `1.6e-23`. `quadrature_error` is the largest successive-grid error estimate encountered, not a rigorous total-error bound; failure to reach the criterion sets `quadrature_inconclusive`.
+
+### Outputs and flags
+
+| Field | Meaning |
+|---|---|
+| `m_NB` | Estimated nonbuncher characteristic mean at the kink, the local polynomial intercept. |
+| `se` | **Standard error, not a confidence interval**: a sandwich using Kish-corrected within-bin mean variances, with buncher-mean variance propagated by the delta method assuming independence. |
+| `pi_kink` | Buncher share in a bin of width `bin_width` centered at the kink, using the same smoothed density model. |
+| `bandwidth`, `bin_width`, `degree`, `density_bandwidth` | The local half-width, bin width, polynomial degree and observed-density smoothing half-width actually used. |
+| `mu_b`, `se_mu_b`, `B`, `sigma`, `a`, `kink` | The fixed first-stage inputs used in this calculation. |
+| `n`, `n_input`, `n_eff`, `n_bins`, `threads_used` | Retained count, input count, Kish effective count, fitted local-bin count and actual runtime team size. |
+| `status`, `status_code`, `refusal_reason` | `ok`/zero for an answer or `refused`/nonzero with the reason below. |
+| `flags` | Semantic flag names; a finite answer is retained when a diagnostic is flagged. |
+| `outside_outcome_range` | The estimated mean is outside the retained characteristic's observed range. |
+| `density_floor_used` | The local fit or kink evaluation required the nonbuncher-density floor. |
+| `sparse_bins` | At least one fitted bin has only one effective observation, so its within-bin variance contribution is zero. |
+| `quadrature_inconclusive` | Mixed-Voigt integration exhausted the refinement budget without meeting its error criterion. |
+| `local_fit` | A data frame in Python (dictionary of arrays without pandas) and R, a NamedTuple of vectors in Julia, and `e(local_fit)` in Stata. |
+
+`local_fit` columns are `center` (bin midpoint in the original log coordinates), `observed_mean` (weighted characteristic mean), `fitted_mixture` (predicted observed mean), `nonbuncher_mean` (fitted local nonbuncher polynomial), `buncher_share` (smoothed mixture share) and `weight` (bin weight before kernel weighting).
+
+Refusal reasons: `insufficient_data` means too few usable observations or local bins; `insufficient_local_variation` means the density or local polynomial system cannot be inverted; `numerical_failure` means the local estimate or SE is nonfinite. Invalid options are input errors. The SE conditions on the estimated mass, friction and smoothed density, omits their uncertainty and local approximation bias, and does not account for dependence between first-stage and local estimates. The target is the observed-coordinate nonbuncher CEF under the local mixture model; no deconvolution of the characteristic CEF is claimed.
+
+## Elasticity of taxable income
+
+The separate ETI interface reports the **Saez trapezoid** as the headline and **continuous completion** (the closed-form completion with continuous joins) as its companion. All shoulder and width calculations run in C++.
+
+Python: `specbunch.eti.estimate(fit, z, tax_below=None, tax_above=None, *, net_below=None, net_above=None, kink=None, weights=None, integration_intervals=200, threads=None)`.
+R: `eti(fit, z, tax_below=NULL, tax_above=NULL, net_below=NULL, net_above=NULL, kink=NULL, weights=NULL, integration_intervals=200, threads=NULL)`.
+Julia: `SpecBunch.ETI.estimate(fit, z; tax_below=nothing, tax_above=nothing, net_below=nothing, net_above=nothing, kink=nothing, weights=nothing, integration_intervals=200, threads=nothing)`.
+Stata: `specbunch eti z [if] [in] [pw=weight], massfit(stored_mass) taxbelow(#) taxabove(#)` or `netbelow(#) netabove(#)`; optional `integrationintervals(200) threads(#)`.
+
+### Main options
+
+`fit` is a coherent mass result supplying `B`, Gaussian SD `sigma`, Cauchy scale `a` and the selected frequency endpoints. `z` is **log income**, with the same kink coordinate and weights as that mass fit; levels must be transformed by the caller. `weights` supplies positive observation weights. `kink` defaults to the mass fit's kink and must agree if supplied. Supply exactly one complete pair: `tax_below`/`tax_above` are marginal tax rates (negative rates allow subsidies), or `net_below`/`net_above` are net-of-tax rates. Net rates must satisfy `net_below > net_above > 0`; `q=log(net_below/net_above)`.
+
+### Advanced (numerical settings)
+
+`integration_intervals=200` is the Simpson subinterval count below the selected window's lower endpoint (rounded up to even; range 4–4,000). The uniform CF grid continues through the selected upper endpoint, with at most 20,001 points. `threads` controls independent fixed chunks, reduced in a fixed order.
+
+For friction transform `phi(t)=exp(-a*|t|-sigma^2*t^2/2)`, the density midpoint is `m = (integral_0^window_lo C(t)/phi(t) dt - B*window_lo)/pi`. The jump `J` is the weighted band mean of `t*S(t)/phi(t)`, with weights `phi(t)^2/t^2`. Shoulders are `left=m-J/2`, `right=m+J/2`. Saez uses `d=2*B/(left+right)`; continuous completion uses `d=3*B/(left+right+sqrt(left*right))`. Each elasticity is `e=d/q`.
+
+### Outputs and interpretation
+
+`saez.e` and `saez.d` are the headline elasticity and implied bunching interval width in log units; `continuous.e` and `continuous.d` are their continuous-completion counterparts. Python/Julia expose nested `.saez` and `.continuous` objects; R exposes lists; Stata returns `e(saez_e)`, `e(saez_d)`, `e(continuous_e)` and `e(continuous_d)`. Each rule also has `status`, either `ok` or a reason it is unavailable. `shoulder_left`, `shoulder_right`, `shoulder_midpoint`, and `shoulder_jump` are the inferred latent nonbuncher density functionals, with density measured per log unit. `log_net_ratio`, `net_below`, `net_above`, `window_lo`, `window_hi`, `integration_intervals`, `B`, `sigma`, `a`, `kink`, `n`, `n_input`, `n_eff` and `threads_used` record inputs and evaluation settings.
+
+`negative_shoulder` flags a negative inferred side; Saez is retained if the midpoint is positive, while continuous completion is unavailable. `zero_shoulder` flags a boundary shoulder: the reported continuous width is the shortest minimum-energy completion, whose minimizer is not unique. Refusal reasons are `insufficient_data` (fewer than two usable rows or unusable total weight), `friction_underflow` (the fitted band cannot be safely deconvolved), and `nonpositive_density` (the midpoint is nonpositive or the shoulder calculation is nonfinite). Invalid rate pairs/options raise input errors. No SE or confidence interval is computed.
+
+These are **finite-resolution CF functionals**: the midpoint omits the high-frequency remainder and the jump is a weighted band projection. Interpreting them as pointwise density shoulders requires local regularity and tail-approximation assumptions. Interpreting `e` structurally additionally requires the homogeneous isoelastic shift-and-bunch model and the supplied marginal incentives. Report the platform, mass-fit flags and the Gaussian/Voigt pair; neither completion rule resolves misspecified friction or first-stage mass bias.

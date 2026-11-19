@@ -11,11 +11,11 @@ p = argparse.ArgumentParser()
 p.add_argument("--bunch", type=Path, required=True)
 p.add_argument("--rd", type=Path)
 p.add_argument("--root", type=Path, default=Path(os.environ.get("SPECPKG_BUILD", str(Path(tempfile.gettempdir())/"spectral-build"))) / 'xlang/fixtures')
-p.add_argument("--entry", choices=["mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","rd","npmle"])
+p.add_argument("--entry", choices=["mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","rd","npmle","postestimation"])
 a = p.parse_args(); a.root.mkdir(parents=True, exist_ok=True)
 if not a.entry:
     cases = []
-    for entry in ("mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","npmle"):
+    for entry in ("mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","npmle","postestimation"):
         subprocess.run([sys.executable,"-I","-B",__file__,"--bunch",str(a.bunch),"--root",str(a.root),"--entry",entry],check=True)
         cases.extend(read_json(a.root/(entry+".json.gz"))["cases"])
     assert any(c["expected"]["status"] > 0 for c in cases), "missing refusal fixture"
@@ -23,9 +23,12 @@ if not a.entry:
     manifest={"format":"spectral-xlang-v1","byte_order":"little","float":"IEEE754-binary64","cases":cases,
               "libraries":{str(p):{"sha256":hashlib.sha256(p.read_bytes()).hexdigest()} for p in (a.bunch,)}}
     write_json(a.root/"manifest.json.gz",manifest)
-    for entry in ("mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","npmle"):
+    for entry in ("mass_gaussian","mass_voigt","mass_gaussian_jump","mass_joint_voigt","bmean","npmle","postestimation"):
         (a.root/(entry+".json.gz")).unlink()
     print("saved",len(cases),"cases",flush=True)
+    raise SystemExit(0)
+if a.entry == "postestimation":
+    subprocess.run([sys.executable,"-I","-B",str(Path(__file__).resolve().parents[1]/"postestimation/generate.py"),"--library",str(a.bunch),"--root",str(a.root)],check=True)
     raise SystemExit(0)
 if a.entry == "npmle":
     subprocess.run([sys.executable,"-I","-B",str(Path(__file__).resolve().parents[1]/"npmle/generate.py"),"--library",str(a.bunch),"--root",str(a.root)],check=True)

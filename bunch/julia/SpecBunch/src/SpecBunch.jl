@@ -65,8 +65,10 @@ function buncher_mean(z,x;kink=0.0,weights=nothing,threads=nothing,seed=1,draws=
     o=MeanOpts(UInt32(sizeof(MeanOpts)),1,_threads(threads),2,1,Int32(draws),UInt64(seed));out=Ref{Ptr{Cvoid}}(C_NULL)
     GC.@preserve z x w begin
         d=MeanData(length(z),pointer(z),pointer(x),_ptr(w));rc=ccall((:sb_bmean,libspecbunch),Cint,(Ref{MeanData},Ref{MeanOpts},Ref{Ptr{Cvoid}}),d,o,out)
-        ans=_finish(rc,out[],:bmean);ans
+        ans=_finish(rc,out[],:bmean);ans.metadata[:kink]=Float64(kink);ans
     end
 end
 include("npmle.jl")
+include("postestimation.jl")
+export nonbuncher_mean, PostestimationResult, ETI
 end

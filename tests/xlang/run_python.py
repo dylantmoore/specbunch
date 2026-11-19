@@ -45,7 +45,7 @@ else:
             serial = "openmp=off" in package._core.fn("build_info")().decode()
             assert result.raw["threads_used"] == (1 if serial else (threads or default()))
             result.raw.pop("threads_used")
-            actual = encode(result.status_code if case["entry"]=="npmle" else result.status, result.raw)
+            actual = encode(result.status_code if case["entry"] in ("npmle","nonbuncher_mean","eti") else result.status, result.raw)
             from compare import compare
             stats = compare(actual, expected, exact=not a.tolerance, report=report, fixture=case['id'])
             if first_actual is not None:

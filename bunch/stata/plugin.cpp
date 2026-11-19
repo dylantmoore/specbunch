@@ -77,6 +77,26 @@ stata_call(int argc, char* argv[]) {
    else { size_t n=0; auto v=sb_result_vector(pending.get(),key.c_str(),&n); for(size_t j=0;j<n;++j) { check(SF_mat_store(argv[2],j+1,1,stata(v[j]))); outbits+=bits(v[j])+" "; } }
    local("bits",outbits); return 0;
   }
+  if(op=="nonbuncher_mean" || op=="eti") {
+   if(argc!=11)throw std::runtime_error("invalid postestimation arguments");
+   pending.reset();int base=op=="nonbuncher_mean"?2:1,nv=SF_nvars();
+   if(nv!=base&&nv!=base+1)throw std::runtime_error("wrong postestimation variable count");
+   std::vector<std::vector<double>> cols(nv);
+   for(int i=SF_in1();i<=SF_in2();++i)if(SF_ifobs(i))for(int j=0;j<nv;++j){double v;check(SF_vdata(j+1,i,&v));cols[j].push_back(SF_is_missing(v)?NAN:v);}
+   const double* w=nv>base?cols.back().data():nullptr;Result* out=nullptr;int rc;
+   if(op=="nonbuncher_mean"){
+    sb_opts_nonbuncher_mean o;sb_opts_nonbuncher_mean_init(&o);
+    o.B=real_argument(argv[1]);o.sigma=real_argument(argv[2]);o.a=real_argument(argv[3]);o.kink=real_argument(argv[4]);o.threads=std::stoi(argv[5]);
+    o.mu_b=real_argument(argv[6]);o.se_mu_b=real_argument(argv[7]);o.bandwidth=real_argument(argv[8]);o.degree=std::stoi(argv[9]);o.bin_width=real_argument(argv[10]);
+    sb_data_xy d{cols[0].size(),cols[0].data(),cols[1].data(),w};rc=sb_nonbuncher_mean(&d,&o,&out);
+   }else{
+    sb_opts_eti o;sb_opts_eti_init(&o);
+    o.B=real_argument(argv[1]);o.sigma=real_argument(argv[2]);o.a=real_argument(argv[3]);o.kink=real_argument(argv[4]);o.threads=std::stoi(argv[5]);
+    o.window_lo=real_argument(argv[6]);o.window_hi=real_argument(argv[7]);o.net_below=real_argument(argv[8]);o.net_above=real_argument(argv[9]);o.integration_intervals=std::stoi(argv[10]);
+    sb_data d{cols[0].size(),cols[0].data(),w};rc=sb_eti(&d,&o,&out);
+   }
+   if(rc){if(out)sb_result_free(out);throw std::runtime_error(sb_last_error());}publish(out);return 0;
+  }
   if(op=="npmle") {
    if(argc!=18)throw std::runtime_error("invalid NPMLE plugin arguments");
    pending.reset();int nv=SF_nvars();if(nv<1||nv>2)throw std::runtime_error("NPMLE expects the running variable and optional weights");

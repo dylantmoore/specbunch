@@ -30,3 +30,50 @@
 {p}By default {cmd:specbunch mass} draws the transform fit: the empirical cosine transform with a pointwise ±2 SE band, the fitted curve over the whole grid and the selected window shaded between dashed lines, titled with method, friction and the estimates. Joint fits add a panel with t times the sine transform and its fit, combined with {cmd:graph combine}. {opt plot(scaled)} (the default) uses frequency times the pilot scale on the horizontal axis; {opt plot(raw)} uses frequency t; {opt noplot} skips drawing. {opt name()} and {opt saving()} are passed to the final graph; give the mass and NPMLE graphs different names to keep both. Drawing uses preserve/restore.{p_end}
 
 {p}All four method/friction combinations are supported. Joint fits are unweighted. Voigt fits use coherence and poor_fit only; Gaussian distribution-shape checks are not applied.{p_end}
+
+{title:Nonbuncher mean at the kink}
+{p 4 4 2}{cmd:specbunch nonbuncher_mean z x} {it:[if] [in] [pw=weight]},
+{cmd:massfit(stored_mass)} {cmd:buncherfit(stored_mean)}
+[{cmd:bandwidth(.05) degree(1) binwidth(.0025) threads(0)}].
+Store the mass and buncher-mean estimates with {cmd:estimates store}.
+Alternatively use {cmd:mub(#) semub(#)} instead of {cmd:buncherfit()}.
+Omitted {cmd:massfit()} uses the current coherent mass result.
+Both first stages must use the same kink, weights and population.
+{p 4 4 2}The C++ core bins raw log-coordinate z and fits the observed mixture
+with the buncher mean fixed. Triangular local-linear fitting at bandwidth .05
+is the default; {cmd:degree(2)} is a quadratic sensitivity check.
+Report the Gaussian and Voigt pair: mixture shares depend on friction.
+{p 4 4 2}Returns {cmd:e(m_NB)}, {cmd:e(se)}, {cmd:e(pi_kink)}, settings and flags,
+and {cmd:e(local_fit)} with center, observed_mean, fitted_mixture,
+nonbuncher_mean, buncher_share and weight columns. The command replaces e().
+SE is not a confidence interval: it conditions on mass, friction and smoothed
+density and propagates buncher-mean variance assuming independence.
+{p 4 4 2}Flags: outside_outcome_range (estimate outside observed X range),
+density_floor_used (nonbuncher density required a positive floor), sparse_bins
+(a fitted bin has only one effective record), quadrature_inconclusive
+(Voigt integration did not meet its refinement criterion).
+Refusals: insufficient_data, insufficient_local_variation, numerical_failure.
+{p 4 4 2}{bf:Advanced numerical settings:} {cmd:binwidth()} sets the bins;
+{cmd:threads()} follows the core convention. See REFERENCE.md for density
+smoothing and conditional-SE assumptions. No plot is drawn.
+
+{title:Elasticity of taxable income}
+{p 4 4 2}{cmd:specbunch eti z} {it:[if] [in] [pw=weight]},
+{cmd:massfit(stored_mass) taxbelow(#) taxabove(#)}; alternatively supply
+{cmd:netbelow(#) netabove(#)}. Supply exactly one rate pair with
+netbelow greater than netabove greater than zero. Negative tax rates permit
+subsidies. Input z must already be in log units, with the mass fit's kink.
+{p 4 4 2}The Saez trapezoid is the headline; continuous completion is the
+companion. The core computes finite-resolution CF shoulders and widths,
+then e=d/log(netbelow/netabove). Returns {cmd:e(saez_e)}, {cmd:e(saez_d)},
+{cmd:e(continuous_e)}, {cmd:e(continuous_d)}, {cmd:e(shoulder_left)},
+{cmd:e(shoulder_right)}, midpoint, jump and flags. No SE or CI is computed.
+{p 4 4 2}negative_shoulder flags a negative side and makes continuous
+completion unavailable, retaining Saez when its midpoint is positive.
+zero_shoulder flags a boundary where the shortest continuous completion is
+reported. Refusals: insufficient_data, friction_underflow, nonpositive_density.
+{p 4 4 2}{bf:Advanced numerical settings:} {cmd:integrationintervals(200)}
+sets Simpson intervals below the mass window; {cmd:threads(0)} controls
+fixed-chunk execution. Structural interpretation requires homogeneous
+isoelastic shifting and the supplied marginal incentives; the shoulders are
+finite-resolution functionals. Report Gaussian/Voigt results and mass-fit flags.

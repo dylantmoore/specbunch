@@ -87,7 +87,7 @@ ExternalProject_Add(highs_ext
   DOWNLOAD_EXTRACT_TIMESTAMP ON)
 set(HIGHS_INC ${HIGHS_PREFIX}/src/highs_ext/src ${HIGHS_PREFIX}/src/highs_ext-build)
 
-add_library(specbunch SHARED src/abi_common.cpp src/abi_mass_gaussian.cpp src/abi_mass_gaussian_jump.cpp src/abi_mass_joint_voigt.cpp src/abi_bmean.cpp src/npmle.cpp vendor/c2/kernel_puf.cpp vendor/c2/probit.cpp)
+add_library(specbunch SHARED src/abi_common.cpp src/abi_mass_gaussian.cpp src/abi_mass_gaussian_jump.cpp src/abi_mass_joint_voigt.cpp src/abi_bmean.cpp src/npmle.cpp src/postestimation.cpp vendor/c2/kernel_puf.cpp vendor/c2/probit.cpp)
 add_dependencies(specbunch highs_ext)
 target_include_directories(specbunch BEFORE PRIVATE ${COMMON_DIR}/shim/portable)
 target_include_directories(specbunch PRIVATE ${HIGHS_INC})

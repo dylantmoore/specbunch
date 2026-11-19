@@ -196,3 +196,7 @@ def npmle(fit,z,weights=None,bins=None,*,threads=None,core_intervals=12,grid_poi
     return result
 
 __all__ += ["npmle","NpmleResult"]
+
+from ._postestimation import nonbuncher_mean, PostestimationResult
+from . import eti
+__all__ += ["nonbuncher_mean", "PostestimationResult", "eti"]

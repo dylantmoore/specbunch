@@ -3,7 +3,7 @@
 Core/common from sibling directories; HiGHS 1.8.0 from the pinned release.
 
 ```
-3e6f14e1cac41ed99930b57c65c8ab0a51ff5dad7b319d386bca9d384ad757cc  src/core/include/specbunch.h
+6717d436d8fb29123657126c37ca9a77b0c391627d90e512b804dce1dc4466b0  src/core/include/specbunch.h
 2f646950626dc9d016f4b5eecda00f9390a46727267abf2af5efdc4112fcb2de  src/core/src/abi_bmean.cpp
 5895f740a0a5fcee2e5e518d9e7700f19b09f17dae1086db9aea1e0fdedb5502  src/core/src/abi_common.cpp
 a8ac256142d8f574b33b9d033f056f87ae4fafa7b947c2c180a21dcfe9eafb75  src/core/src/abi_mass_gaussian.cpp
@@ -19,6 +19,7 @@ a7652aa5c444a3a6b73c5dbfea9c3a0d772274d1b8002ce2bba1e927a26e62ca  src/core/src/a
 ea8083b988ea24a94cf514f8f14c6b667d8f5840f35d1cf230548009a58c148c  src/core/src/npmle_basis.hpp
 f5a8c3beeaaa3fdba3e1c119e05930c3d71cc79bc66461df07ad97f1c3bd1a77  src/core/src/npmle_fit.hpp
 d700c2d606a35fb255379f262442e8ed5ad8dbf9ea5d58f6056db6664fd49a4d  src/core/src/policy_run.hpp
+baea23cae709929997c864cfb2aa24af7f58cb421cd363d36369d3a158a10310  src/core/src/postestimation.cpp
 b45f6f892f0ffbcffb95b0181868c53f5790216fe8682a47238e6b4cb08fc8af  src/core/src/private_policy.hpp
 c4a7c2fa4dc2e6bfe06b1b4b264cc3cb30f90d3ad0a40136e9c2c749b0658013  src/core/src/public_result.hpp
 c018564d6a429b96a6c0940a3f5ca646dad49147c87045cc719f2a9e295e267a  src/core/src/transform_output.hpp

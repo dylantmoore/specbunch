@@ -118,6 +118,15 @@ if not a.compare_only:
    opts=' '.join(f'{k}({v})' for k,v in c['options'].items())+(f' threads({t})' if t else '')
    if c['entry']=='rd': cmd='specrd y d w'
    elif c['entry']=='bmean': cmd='specbunch buncher z x'
+   elif c['entry'] in ('nonbuncher_mean','eti'):
+    f=c['fixed_mass']
+    # Fixed first-stage oracle inputs isolate postestimation in each public wrapper.
+    lines += ['capture program drop _fixed_mass','program define _fixed_mass, eclass','ereturn clear','ereturn local cmd "specbunch"','ereturn local method "cosine"','ereturn local friction "'+('voigt' if f['a']>0 else 'gaussian')+'"','ereturn scalar core_status=0']
+    lines += [f'ereturn scalar {k}={v:.17g}' for k,v in f.items()]
+    lines += ['end','_fixed_mass']
+    aliases={'mu_b':'mub','se_mu_b':'semub','bin_width':'binwidth','net_below':'netbelow','net_above':'netabove','integration_intervals':'integrationintervals'}
+    opts=' '.join(f'{aliases.get(k,k)}({v})' for k,v in c['options'].items())+(f' threads({t})' if t else '')
+    cmd='specbunch '+c['entry']+' z'+(' x' if c['entry']=='nonbuncher_mean' else '')
    elif c['entry']=='npmle':
     mo=' '.join(f'{k}({v})' for k,v in c['mass_options'].items())
     lines += ['specbunch mass z'+weight+', '+mo+(f' threads({t})' if t else '')]
